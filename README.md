@@ -1,7 +1,7 @@
 bplist-parser
 =============
 
-Binary Max OS X Plist (property list) parser.
+Binary Mac OS X Plist (property list) parser.
 
 ## Installation
 
