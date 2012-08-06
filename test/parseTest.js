@@ -18,7 +18,6 @@ module.exports = {
 
       var endTime = new Date();
       console.log('Parsed "' + file + '" in ' + (endTime - startTime1) + 'ms');
-      console.log(dicts);
       var dict = dicts[0];
       test.equal(dict['Application Version'], "9.0.3");
       test.equal(dict['Library Persistent ID'], "6F81D37F95101437");
@@ -60,22 +59,22 @@ module.exports = {
     });
   },
 
-//  'airplay': function (test) {
-//    var file = path.join(__dirname, "airplay.xml");
-//    var startTime = new Date();
-//
-//    plist.parseFile(file, function (err, dicts) {
-//      if (err) {
-//        throw err;
-//      }
-//
-//      var endTime = new Date();
-//      console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
-//
-//      var dict = dicts[0];
-//      test.equal(dict['duration'], 5555.0495000000001);
-//      test.equal(dict['position'], 4.6269989039999997);
-//      test.done();
-//    });
-//  }
+  'airplay': function (test) {
+    var file = path.join(__dirname, "airplay.bplist");
+    var startTime = new Date();
+
+    bplist.parseFile(file, function (err, dicts) {
+      if (err) {
+        throw err;
+      }
+
+      var endTime = new Date();
+      console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
+
+      var dict = dicts[0];
+      test.equal(dict['duration'], 5555.0495000000001);
+      test.equal(dict['position'], 4.6269989039999997);
+      test.done();
+    });
+  }
 };

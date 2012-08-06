@@ -3,9 +3,14 @@
 // adapted from http://code.google.com/p/plist/source/browse/trunk/src/com/dd/plist/BinaryPropertyListParser.java
 
 var fs = require('fs');
-var debug = true;
+var debug = false;
 
 exports.maxObjectSize = 100 * 1000 * 1000; // 100Meg
+
+// EPOCH = new SimpleDateFormat("yyyy MM dd zzz").parse("2001 01 01 GMT").getTime();
+// ...but that's annoying in a static initializer because it can throw exceptions, ick.
+// So we just hardcode the correct value.
+var EPOCH = 978307200000;
 
 var parseFile = exports.parseFile = function (fileName, callback) {
   fs.readFile(fileName, function (err, data) {
@@ -102,47 +107,52 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
         throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
     }
-//    case 0x2: {
-//      //real
-//      int length = (int) Math.pow(2, objInfo);
-//      if (length < Runtime.getRuntime().freeMemory()) {
-//        return new NSNumber(copyOfRange(bytes, offset + 1, offset + 1 + length), NSNumber.REAL);
-//      } else {
-//        throw new Exception("To little heap space available! Wanted to read " + length + " bytes, but only " + Runtime.getRuntime().freeMemory() + " are available.");
-//      }
-//    }
-//    case 0x3: {
-//      //Date
-//      if (objInfo != 0x3) {
-//        System.err.println("Unknown date type :" + objInfo + ". Parsing anyway...");
-//      }
-//      return new NSDate(copyOfRange(bytes, offset + 1, offset + 9));
-//    }
-//    case 0x4: {
-//      //Data
-//      int dataoffset = 1;
-//      int length = objInfo;
-//      if (objInfo == 0xF) {
-//        int int_type = bytes[offset + 1];
-//        int intType = (int_type & 0xF0) / 0xF;
-//        if (intType != 0x1) {
-//          System.err.println("UNEXPECTED LENGTH-INT TYPE! " + intType);
-//        }
-//        int intInfo = int_type & 0x0F;
-//        int intLength = (int) Math.pow(2, intInfo);
-//        dataoffset = 2 + intLength;
-//        if (intLength < 3) {
-//          length = (int) parseUnsignedInt(copyOfRange(bytes, offset + 2, offset + 2 + intLength));
-//        } else {
-//          length = new BigInteger(copyOfRange(bytes, offset + 2, offset + 2 + intLength)).intValue();
-//        }
-//      }
-//      if (length < Runtime.getRuntime().freeMemory()) {
-//        return new NSData(copyOfRange(bytes, offset + dataoffset, offset + dataoffset + length));
-//      } else {
-//        throw new Exception("To little heap space available! Wanted to read " + length + " bytes, but only " + Runtime.getRuntime().freeMemory() + " are available.");
-//      }
-//    }
+    case 0x2:
+    {
+      //real
+      var length = Math.pow(2, objInfo);
+      if (length < exports.maxObjectSize) {
+        var realBuffer = buffer.slice(offset + 1, offset + 1 + length);
+        return realBuffer.readDoubleBE(0);
+      } else {
+        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
+      }
+    }
+    case 0x3:
+    {
+      //Date
+      if (objInfo != 0x3) {
+        console.error("Unknown date type :" + objInfo + ". Parsing anyway...");
+      }
+      var dateBuffer = buffer.slice(offset + 1, offset + 9);
+      return new Date(EPOCH + (1000 * dateBuffer.readDoubleBE(0)));
+    }
+    case 0x4:
+    {
+      //Data
+      var dataoffset = 1;
+      var length = objInfo;
+      if (objInfo == 0xF) {
+        var int_type = buffer[offset + 1];
+        var intType = (int_type & 0xF0) / 0x10;
+        if (intType != 0x1) {
+          console.error("0x4: UNEXPECTED LENGTH-INT TYPE! " + intType);
+        }
+        var intInfo = int_type & 0x0F;
+        var intLength = Math.pow(2, intInfo);
+        dataoffset = 2 + intLength;
+        if (intLength < 3) {
+          length = readUInt(buffer.slice(offset + 2, offset + 2 + intLength));
+        } else {
+          length = readUInt(buffer.slice(offset + 2, offset + 2 + intLength));
+        }
+      }
+      if (length < exports.maxObjectSize) {
+        return buffer.slice(offset + dataoffset, offset + dataoffset + length);
+      } else {
+        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
+      }
+    }
     case 0x5:
     {
       //ASCII String
@@ -175,7 +185,7 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
 //      int stroffset = 1;
 //      if (objInfo == 0xF) {
 //        int int_type = bytes[offset + 1];
-//        int intType = (int_type & 0xF0) / 0xF;
+//        int intType = (int_type & 0xF0) / 0x10;
 //        if (intType != 0x1) {
 //          System.err.println("UNEXPECTED LENGTH-INT TYPE! " + intType);
 //        }
@@ -190,19 +200,19 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
 //      }
 //      //length is String length -> to get byte length multiply by 2, as 1 character takes 2 bytes in UTF-16
 //      length *= 2;
-//      if (length < Runtime.getRuntime().freeMemory()) {
+//      if (length < exports.maxObjectSize) {
 //        return new NSString(copyOfRange(bytes, offset + stroffset, offset + stroffset + length), "UTF-16BE");
 //      } else {
-//        throw new Exception("To little heap space available! Wanted to read " + length + " bytes, but only " + Runtime.getRuntime().freeMemory() + " are available.");
+//        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
 //      }
 //    }
 //    case 0x8: {
 //      //UID
 //      int length = objInfo + 1;
-//      if (length < Runtime.getRuntime().freeMemory()) {
+//      if (length < exports.maxObjectSize) {
 //        return new UID(String.valueOf(obj), copyOfRange(bytes, offset + 1, offset + 1 + length));
 //      } else {
-//        throw new Exception("To little heap space available! Wanted to read " + length + " bytes, but only " + Runtime.getRuntime().freeMemory() + " are available.");
+//        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
 //      }
 //    }
     case 0xA:
@@ -222,7 +232,7 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
         if (intLength < 3) {
           length = readUInt(buffer.slice(offset + 2, offset + 2 + intLength));
         } else {
-          length = readUInt(buffer.slice(offset + 2, offset + 2 + intLength)).intValue();
+          length = readUInt(buffer.slice(offset + 2, offset + 2 + intLength));
         }
       }
       if (length * objectRefSize > exports.maxObjectSize) {
@@ -241,7 +251,7 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
 //      int arrayoffset = 1;
 //      if (objInfo == 0xF) {
 //        int int_type = bytes[offset + 1];
-//        int intType = (int_type & 0xF0) / 0xF;
+//        int intType = (int_type & 0xF0) / 0x10;
 //        if (intType != 0x1) {
 //          System.err.println("UNEXPECTED LENGTH-INT TYPE! " + intType);
 //        }
@@ -254,8 +264,8 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
 //          length = new BigInteger(copyOfRange(bytes, offset + 2, offset + 2 + intLength)).intValue();
 //        }
 //      }bytes
-//      if (length * objectRefSize > Runtime.getRuntime().freeMemory()) {
-//        throw new Exception("To little heap space available!");
+//      if (length * objectRefSize > exports.maxObjectSize) {
+//        throw new Error("To little heap space available!");
 //      }
 //      NSSet set = new NSSet();
 //      for (int i = 0; i < length; i++) {
@@ -273,7 +283,7 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       var dictoffset = 1;
       if (objInfo == 0xF) {
         var int_type = buffer[offset + 1];
-        var intType = (int_type & 0xF0) / 0xF;
+        var intType = (int_type & 0xF0) / 0x10;
         if (intType != 0x1) {
           console.error("0xD: UNEXPECTED LENGTH-INT TYPE! " + intType);
         }
