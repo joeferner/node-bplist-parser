@@ -81,7 +81,32 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
     var objInfo = (type & 0x0F);      //Second 4 bits
     switch (objType) {
     case 0x0:
-    {
+      return parseSimple();
+    case 0x1:
+      return parseInteger();
+    case 0x2:
+      return parseReal();
+    case 0x3:
+      return parseDate();
+    case 0x4:
+      return parseData();
+    case 0x5:
+      return parseAsciiString();
+    case 0x6:
+      return parseUtf16String();
+    case 0x8:
+      return parseUid();
+    case 0xA:
+      return parseArray();
+    case 0xC:
+      return parseSet();
+    case 0xD:
+      return parseDictionary();
+    default:
+      throw new Error("Unhandled type 0x" + objType.toString(16));
+    }
+
+    function parseSimple() {
       //Simple
       switch (objInfo) {
       case 0x0: // null
@@ -95,11 +120,9 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       default:
         throw new Error("Unhandled simple type 0x" + objType.toString(16));
       }
-      break;
     }
-    case 0x1:
-    {
-      //integer
+
+    function parseInteger() {
       var length = Math.pow(2, objInfo);
       if (length < exports.maxObjectSize) {
         return readUInt(buffer.slice(offset + 1, offset + 1 + length));
@@ -107,9 +130,8 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
         throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
     }
-    case 0x2:
-    {
-      //real
+
+    function parseReal() {
       var length = Math.pow(2, objInfo);
       if (length < exports.maxObjectSize) {
         var realBuffer = buffer.slice(offset + 1, offset + 1 + length);
@@ -118,18 +140,16 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
         throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
     }
-    case 0x3:
-    {
-      //Date
+
+    function parseDate() {
       if (objInfo != 0x3) {
         console.error("Unknown date type :" + objInfo + ". Parsing anyway...");
       }
       var dateBuffer = buffer.slice(offset + 1, offset + 9);
       return new Date(EPOCH + (1000 * dateBuffer.readDoubleBE(0)));
     }
-    case 0x4:
-    {
-      //Data
+
+    function parseData() {
       var dataoffset = 1;
       var length = objInfo;
       if (objInfo == 0xF) {
@@ -153,9 +173,8 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
         throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
     }
-    case 0x5:
-    {
-      //ASCII String
+
+    function parseAsciiString() {
       var length = objInfo;
       var stroffset = 1;
       if (objInfo == 0xF) {
@@ -179,8 +198,9 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
         throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
     }
-//    case 0x6: {
-//      //UTF-16-BE String
+
+    function parseUtf16String() {
+      throw new Error("parseUtf16String not implemented");
 //      int length = objInfo;
 //      int stroffset = 1;
 //      if (objInfo == 0xF) {
@@ -205,19 +225,19 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
 //      } else {
 //        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
 //      }
-//    }
-//    case 0x8: {
-//      //UID
+    }
+
+    function parseUid() {
+      throw new Error("parseUid not implemented");
 //      int length = objInfo + 1;
 //      if (length < exports.maxObjectSize) {
 //        return new UID(String.valueOf(obj), copyOfRange(bytes, offset + 1, offset + 1 + length));
 //      } else {
 //        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
 //      }
-//    }
-    case 0xA:
-    {
-      //Array
+    }
+
+    function parseArray() {
       var length = objInfo;
       var arrayoffset = 1;
       if (objInfo == 0xF) {
@@ -245,8 +265,9 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       }
       return array;
     }
-//    case 0xC: {
-//      //Set
+
+    function parseSet() {
+      throw new Error("parseSet not implemented");
 //      int length = objInfo;
 //      int arrayoffset = 1;
 //      if (objInfo == 0xF) {
@@ -275,10 +296,9 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
 //        set.addObject(parseObject(objRef));
 //      }
 //      return set;
-//    }
-    case 0xD:
-    {
-      //Dictionary
+    }
+
+    function parseDictionary() {
       var length = objInfo;
       var dictoffset = 1;
       if (objInfo == 0xF) {
@@ -315,10 +335,6 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       }
       return dict;
     }
-    default:
-      throw new Error("Unhandled type 0x" + objType.toString(16));
-    }
-    return null;
   }
 
   return [ parseObject(topObject) ];
