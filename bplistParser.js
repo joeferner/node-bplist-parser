@@ -90,10 +90,10 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       return parseDate();
     case 0x4:
       return parseData();
-    case 0x5:
-      return parseAsciiString();
-    case 0x6:
-      return parseUtf16String();
+    case 0x5: // ASCII
+      return parsePlistString();
+    case 0x6: // UTF-16
+      return parsePlistString(true);
     case 0x8:
       return parseUid();
     case 0xA:
@@ -174,57 +174,34 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       }
     }
 
-    function parseAsciiString() {
+    function parsePlistString (isUtf16) {
       var length = objInfo;
       var stroffset = 1;
       if (objInfo == 0xF) {
         var int_type = buffer[offset + 1];
         var intType = (int_type & 0xF0) / 0x10;
         if (intType != 0x1) {
-          console.error("0x5: UNEXPECTED LENGTH-INT TYPE! " + intType);
+          console.err("UNEXPECTED LENGTH-INT TYPE! " + intType);
         }
         var intInfo = int_type & 0x0F;
         var intLength = Math.pow(2, intInfo);
-        stroffset = 2 + intLength;
+        var stroffset = 2 + intLength;
         if (intLength < 3) {
           length = readUInt(buffer.slice(offset + 2, offset + 2 + intLength));
         } else {
           length = readUInt(buffer.slice(offset + 2, offset + 2 + intLength));
         }
       }
+      //length is String length -> to get byte length multiply by 2, as 1 character takes 2 bytes in UTF-16
+      if (isUtf16) {
+        console.log('is utf 16');
+        length *= 2;
+      }
       if (length < exports.maxObjectSize) {
         return buffer.slice(offset + stroffset, offset + stroffset + length).toString('utf8');
       } else {
-        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
+        throw new Error("To little heap space available! Watned to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
-    }
-
-    function parseUtf16String() {
-      throw new Error("parseUtf16String not implemented");
-//      int length = objInfo;
-//      int stroffset = 1;
-//      if (objInfo == 0xF) {
-//        int int_type = bytes[offset + 1];
-//        int intType = (int_type & 0xF0) / 0x10;
-//        if (intType != 0x1) {
-//          System.err.println("UNEXPECTED LENGTH-INT TYPE! " + intType);
-//        }
-//        int intInfo = int_type & 0x0F;
-//        int intLength = (int) Math.pow(2, intInfo);
-//        stroffset = 2 + intLength;
-//        if (intLength < 3) {
-//          length = (int) parseUnsignedInt(copyOfRange(bytes, offset + 2, offset + 2 + intLength));
-//        } else {
-//          length = new BigInteger(copyOfRange(bytes, offset + 2, offset + 2 + intLength)).intValue();
-//        }
-//      }
-//      //length is String length -> to get byte length multiply by 2, as 1 character takes 2 bytes in UTF-16
-//      length *= 2;
-//      if (length < exports.maxObjectSize) {
-//        return new NSString(copyOfRange(bytes, offset + stroffset, offset + stroffset + length), "UTF-16BE");
-//      } else {
-//        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
-//      }
     }
 
     function parseUid() {
