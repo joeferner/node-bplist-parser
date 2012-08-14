@@ -98,8 +98,6 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       return parseUid();
     case 0xA:
       return parseArray();
-    case 0xC:
-      return parseSet();
     case 0xD:
       return parseDictionary();
     default:
@@ -240,38 +238,6 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
         array[i] = parseObject(objRef);
       }
       return array;
-    }
-
-    function parseSet() {
-      throw new Error("parseSet not implemented");
-//      int length = objInfo;
-//      int arrayoffset = 1;
-//      if (objInfo == 0xF) {
-//        int int_type = bytes[offset + 1];
-//        int intType = (int_type & 0xF0) / 0x10;
-//        if (intType != 0x1) {
-//          System.err.println("UNEXPECTED LENGTH-INT TYPE! " + intType);
-//        }
-//        int intInfo = int_type & 0x0F;
-//        int intLength = (int) Math.pow(2, intInfo);
-//        arrayoffset = 2 + intLength;
-//        if (intLength < 3) {
-//          length = (int) parseUnsignedInt(copyOfRange(bytes, offset + 2, offset + 2 + intLength));
-//        } else {
-//          length = new BigInteger(copyOfRange(bytes, offset + 2, offset + 2 + intLength)).intValue();
-//        }
-//      }bytes
-//      if (length * objectRefSize > exports.maxObjectSize) {
-//        throw new Error("To little heap space available!");
-//      }
-//      NSSet set = new NSSet();
-//      for (int i = 0; i < length; i++) {
-//        int objRef = (int) parseUnsignedInt(copyOfRange(bytes,
-//          offset + arrayoffset + i * objectRefSize,
-//          offset + arrayoffset + (i + 1) * objectRefSize));
-//        set.addObject(parseObject(objRef));
-//      }
-//      return set;
     }
 
     function parseDictionary() {
