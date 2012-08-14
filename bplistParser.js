@@ -194,7 +194,6 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       }
       //length is String length -> to get byte length multiply by 2, as 1 character takes 2 bytes in UTF-16
       if (isUtf16) {
-        console.log('is utf 16');
         length *= 2;
       }
       if (length < exports.maxObjectSize) {
