@@ -95,5 +95,25 @@ module.exports = {
       test.equal(dict['CFBundleShortVersionString'], '2.6.1');
       test.done();
     });
+  },
+
+  'uid': function (test) {
+    var file = path.join(__dirname, "uid.bplist");
+    var startTime = new Date();
+
+    bplist.parseFile(file, function (err, dicts) {
+      if (err) {
+        throw err;
+      }
+
+      var endTime = new Date();
+      console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
+
+      var dict = dicts[0]; 
+      test.deepEqual(dict['$objects'][1]['NS.keys'], [2, 3, 4]);
+      test.deepEqual(dict['$objects'][1]['NS.objects'], [5, 6, 7]);
+      test.equal(dict['$top']['root'], 1);      
+      test.done();
+    });
   }
 };

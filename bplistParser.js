@@ -83,6 +83,7 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
     case 0x0:
       return parseSimple();
     case 0x1:
+    case 0x8: // UID (really just an integer)
       return parseInteger();
     case 0x2:
       return parseReal();
@@ -94,8 +95,6 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       return parsePlistString();
     case 0x6: // UTF-16
       return parsePlistString(true);
-    case 0x8:
-      return parseUid();
     case 0xA:
       return parseArray();
     case 0xD:
@@ -199,16 +198,6 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       } else {
         throw new Error("To little heap space available! Watned to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
-    }
-
-    function parseUid() {
-      throw new Error("parseUid not implemented");
-//      int length = objInfo + 1;
-//      if (length < exports.maxObjectSize) {
-//        return new UID(String.valueOf(obj), copyOfRange(bytes, offset + 1, offset + 1 + length));
-//      } else {
-//        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
-//      }
     }
 
     function parseArray() {
