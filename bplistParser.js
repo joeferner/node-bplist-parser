@@ -172,6 +172,8 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
     }
 
     function parsePlistString (isUtf16) {
+      isUtf16 = isUtf16 || 0;
+      var enc = "utf8";
       var length = objInfo;
       var stroffset = 1;
       if (objInfo == 0xF) {
@@ -189,14 +191,17 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
           length = readUInt(buffer.slice(offset + 2, offset + 2 + intLength));
         }
       }
-      //length is String length -> to get byte length multiply by 2, as 1 character takes 2 bytes in UTF-16
-      if (isUtf16) {
-        length *= 2;
-      }
+      // length is String length -> to get byte length multiply by 2, as 1 character takes 2 bytes in UTF-16
+      length *= (isUtf16 + 1);
       if (length < exports.maxObjectSize) {
-        return buffer.slice(offset + stroffset, offset + stroffset + length).toString('utf8');
+        var plistString = buffer.slice(offset + stroffset, offset + stroffset + length);
+        if (isUtf16) {
+          plistString = swapBytes(plistString); 
+          enc = "ucs2";
+        }
+        return plistString.toString(enc);
       } else {
-        throw new Error("To little heap space available! Watned to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
+        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
     }
 
@@ -286,4 +291,14 @@ function readUInt(buffer, start) {
 function readUInt64BE(buffer, start) {
   var data = buffer.slice(start, start + 8);
   return data.readUInt32BE(4, 8);
+}
+
+function swapBytes(buffer) {
+  var len = buffer.length;
+  for (var i = 0; i < len; i += 2) {
+    var a = buffer[i];
+    buffer[i] = buffer[i+1];
+    buffer[i+1] = a;
+  }
+  return buffer;
 }

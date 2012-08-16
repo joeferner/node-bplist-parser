@@ -79,7 +79,7 @@ module.exports = {
   },
 
   'utf16': function (test) {
-    var file = path.join(__dirname, "utf16.plist");
+    var file = path.join(__dirname, "utf16.bplist");
     var startTime = new Date();
 
     bplist.parseFile(file, function (err, dicts) {
@@ -93,6 +93,7 @@ module.exports = {
       var dict = dicts[0];
       test.equal(dict['CFBundleName'], 'sellStuff');
       test.equal(dict['CFBundleShortVersionString'], '2.6.1');
+      test.equal(dict['NSHumanReadableCopyright'], '©2008-2012, sellStuff, Inc.');
       test.done();
     });
   },
