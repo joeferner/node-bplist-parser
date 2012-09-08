@@ -132,7 +132,12 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       var length = Math.pow(2, objInfo);
       if (length < exports.maxObjectSize) {
         var realBuffer = buffer.slice(offset + 1, offset + 1 + length);
-        return realBuffer.readDoubleBE(0);
+        if (length === 4) {
+          return realBuffer.readFloatBE(0);
+        }
+        else if (length === 8) {
+          return realBuffer.readDoubleBE(0);
+        }
       } else {
         throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
