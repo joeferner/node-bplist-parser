@@ -83,8 +83,9 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
     case 0x0:
       return parseSimple();
     case 0x1:
-    case 0x8: // UID (really just an integer)
       return parseInteger();
+    case 0x8:
+      return parseUID();
     case 0x2:
       return parseReal();
     case 0x3:
@@ -121,6 +122,15 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
 
     function parseInteger() {
       var length = Math.pow(2, objInfo);
+      if (length < exports.maxObjectSize) {
+        return readUInt(buffer.slice(offset + 1, offset + 1 + length));
+      } else {
+        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
+      }
+    }
+
+    function parseUID() {
+      var length = objInfo + 1;
       if (length < exports.maxObjectSize) {
         return readUInt(buffer.slice(offset + 1, offset + 1 + length));
       } else {
@@ -201,7 +211,7 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       if (length < exports.maxObjectSize) {
         var plistString = buffer.slice(offset + stroffset, offset + stroffset + length);
         if (isUtf16) {
-          plistString = swapBytes(plistString); 
+          plistString = swapBytes(plistString);
           enc = "ucs2";
         }
         return plistString.toString(enc);
