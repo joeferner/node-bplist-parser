@@ -12,18 +12,24 @@ exports.maxObjectSize = 100 * 1000 * 1000; // 100Meg
 // So we just hardcode the correct value.
 var EPOCH = 978307200000;
 
-var parseFile = exports.parseFile = function (fileName, callback) {
-  fs.readFile(fileName, function (err, data) {
-    if (err) {
-      return callback(err);
-    }
+var parseFile = exports.parseFile = function (fileNameOrBuffer, callback) {
+  function tryParseBuffer(buffer) {
     try {
-      var result = parseBuffer(data);
+      var result = parseBuffer(buffer);
       return callback(null, result);
     } catch (ex) {
       return callback(ex);
     }
-  });
+  }
+
+  if (Buffer.isBuffer(fileNameOrBuffer)) {
+    return tryParseBuffer(fileNameOrBuffer);
+  } else {
+    fs.readFile(fileNameOrBuffer, function (err, data) {
+      if (err) { return callback(err); }
+      tryParseBuffer(data);
+    });
+  }
 };
 
 var parseBuffer = exports.parseBuffer = function (buffer) {
