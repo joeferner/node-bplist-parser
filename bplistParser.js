@@ -6,6 +6,7 @@ var fs = require('fs');
 var debug = false;
 
 exports.maxObjectSize = 100 * 1000 * 1000; // 100Meg
+exports.maxObjectCount = 32768;
 
 // EPOCH = new SimpleDateFormat("yyyy MM dd zzz").parse("2001 01 01 GMT").getTime();
 // ...but that's annoying in a static initializer because it can throw exceptions, ick.
@@ -63,6 +64,10 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
   var offsetTableOffset = readUInt64BE(trailer, 24);
   if (debug) {
     console.log("offsetTableOffset: " + offsetTableOffset);
+  }
+
+  if (numObjects > exports.maxObjectCount) {
+    throw new Error("maxObjectCount exceeded");
   }
 
   // Handle offset table
