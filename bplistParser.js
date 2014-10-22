@@ -15,12 +15,14 @@ var EPOCH = 978307200000;
 
 var parseFile = exports.parseFile = function (fileNameOrBuffer, callback) {
   function tryParseBuffer(buffer) {
+    var err = null;
+    var result;
     try {
-      var result = parseBuffer(buffer);
-      return callback(null, result);
+      result = parseBuffer(buffer);
     } catch (ex) {
-      return callback(ex);
+      err = ex;
     }
+    callback(err, result);
   }
 
   if (Buffer.isBuffer(fileNameOrBuffer)) {
