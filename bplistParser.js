@@ -222,7 +222,7 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       // length is String length -> to get byte length multiply by 2, as 1 character takes 2 bytes in UTF-16
       length *= (isUtf16 + 1);
       if (length < exports.maxObjectSize) {
-        var plistString = buffer.slice(offset + stroffset, offset + stroffset + length);
+        var plistString = new Buffer(buffer.slice(offset + stroffset, offset + stroffset + length));
         if (isUtf16) {
           plistString = swapBytes(plistString);
           enc = "ucs2";
