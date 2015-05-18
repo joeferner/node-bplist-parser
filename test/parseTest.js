@@ -132,9 +132,9 @@ module.exports = {
       console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
 
       var dict = dicts[0];
-      test.deepEqual(dict['$objects'][1]['NS.keys'], [2, 3, 4]);
-      test.deepEqual(dict['$objects'][1]['NS.objects'], [5, 6, 7]);
-      test.equal(dict['$top']['root'], 1);
+      test.deepEqual(dict['$objects'][1]['NS.keys'], [{UID:2}, {UID:3}, {UID:4}]);
+      test.deepEqual(dict['$objects'][1]['NS.objects'], [{UID: 5}, {UID:6}, {UID:7}]);
+      test.deepEqual(dict['$top']['root'], {UID:1});
       test.done();
     });
   }
