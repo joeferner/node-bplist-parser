@@ -98,6 +98,27 @@ module.exports = {
     });
   },
 
+  'utf16chinese': function (test) {
+    var file = path.join(__dirname, "utf16_chinese.plist");
+    var startTime = new Date();
+
+    bplist.parseFile(file, function (err, dicts) {
+      if (err) {
+        throw err;
+      }
+
+      var endTime = new Date();
+      console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
+
+      var dict = dicts[0];
+      test.equal(dict['CFBundleName'], '天翼阅读');
+      test.equal(dict['CFBundleDisplayName'], '天翼阅读');
+      test.done();
+    });
+  },
+
+
+
   'uid': function (test) {
     var file = path.join(__dirname, "uid.bplist");
     var startTime = new Date();
@@ -110,10 +131,10 @@ module.exports = {
       var endTime = new Date();
       console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
 
-      var dict = dicts[0]; 
+      var dict = dicts[0];
       test.deepEqual(dict['$objects'][1]['NS.keys'], [2, 3, 4]);
       test.deepEqual(dict['$objects'][1]['NS.objects'], [5, 6, 7]);
-      test.equal(dict['$top']['root'], 1);      
+      test.equal(dict['$top']['root'], 1);
       test.done();
     });
   }
