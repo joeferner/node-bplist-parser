@@ -13,6 +13,11 @@ exports.maxObjectCount = 32768;
 // So we just hardcode the correct value.
 var EPOCH = 978307200000;
 
+// UID object definition
+var UID = exports.UID = function(id) {
+  this.UID = id;
+}
+
 var parseFile = exports.parseFile = function (fileNameOrBuffer, callback) {
   function tryParseBuffer(buffer) {
     var err = null;
@@ -145,7 +150,7 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
     function parseUID() {
       var length = objInfo + 1;
       if (length < exports.maxObjectSize) {
-        return readUInt(buffer.slice(offset + 1, offset + 1 + length));
+        return new UID(readUInt(buffer.slice(offset + 1, offset + 1 + length)));
       } else {
         throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
