@@ -19,5 +19,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/nearinfinity/node-bplist-parser.git"
+  },
+  "dependencies": {
+    "big-integer": "^1.6.7"
   }
 }
