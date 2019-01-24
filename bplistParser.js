@@ -155,7 +155,10 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
 
     function parseInteger() {
       var length = Math.pow(2, objInfo);
-      if (length > 4) {
+      
+      if (objInfo == 0x4) {
+        return readUInt64BE(buffer, offset + 1);
+      } else if (objInfo == 0x3) {
         return buffer.readInt32BE(offset + 1);
       } else if (length < exports.maxObjectSize) {
         return readUInt(buffer.slice(offset + 1, offset + 1 + length));
