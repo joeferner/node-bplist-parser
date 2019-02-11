@@ -156,11 +156,14 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
 
     function parseInteger() {
       var length = Math.pow(2, objInfo);
-      if (length > 4) {
+      
+      if (objInfo == 0x4) {
         var data = buffer.slice(offset + 1, offset + 1 + length);
         var str = bufferToHexString(data);
         return bigInt(str, 16);
-      } if (length < exports.maxObjectSize) {
+      } else if (objInfo == 0x3) {
+        return buffer.readInt32BE(offset + 1);
+      } else if (length < exports.maxObjectSize) {
         return readUInt(buffer.slice(offset + 1, offset + 1 + length));
       } else {
         throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
