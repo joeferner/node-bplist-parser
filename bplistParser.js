@@ -3,6 +3,7 @@
 // adapted from http://code.google.com/p/plist/source/browse/trunk/src/com/dd/plist/BinaryPropertyListParser.java
 
 var fs = require('fs');
+var bigInt = require("big-integer");
 var debug = false;
 
 exports.maxObjectSize = 100 * 1000 * 1000; // 100Meg
@@ -157,7 +158,9 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       var length = Math.pow(2, objInfo);
       
       if (objInfo == 0x4) {
-        return readUInt64BE(buffer, offset + 1);
+        var data = buffer.slice(offset + 1, offset + 1 + length);
+        var str = bufferToHexString(data);
+        return bigInt(str, 16);
       } else if (objInfo == 0x3) {
         return buffer.readInt32BE(offset + 1);
       } else if (length < exports.maxObjectSize) {
