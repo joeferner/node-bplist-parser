@@ -4,7 +4,7 @@
   "description": "Binary plist parser.",
   "main": "bplistParser.js",
   "scripts": {
-    "test": "./node_modules/nodeunit/bin/nodeunit test"
+    "test": "mocha test"
   },
   "keywords": [
     "bplist",
@@ -12,15 +12,23 @@
     "parser"
   ],
   "author": "Joe Ferner <joe.ferner@nearinfinity.com>",
+  "contributors": [
+    "Brett Zamir"
+  ],
   "license": "MIT",
   "devDependencies": {
-    "nodeunit": "~0.9.1"
+    "mocha": "^6.1.4"
+  },
+  "homepage": "https://github.com/nearinfinity/node-bplist-parser",
+  "bugs": "https://github.com/nearinfinity/node-bplist-parser/issues",
+  "engines": {
+    "node": ">= 5.10.0"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/nearinfinity/node-bplist-parser.git"
   },
   "dependencies": {
-    "big-integer": "^1.6.7"
+    "big-integer": "^1.6.43"
   }
 }

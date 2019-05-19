@@ -20,25 +20,33 @@ var UID = exports.UID = function(id) {
 }
 
 var parseFile = exports.parseFile = function (fileNameOrBuffer, callback) {
-  function tryParseBuffer(buffer) {
-    var err = null;
-    var result;
-    try {
-      result = parseBuffer(buffer);
-    } catch (ex) {
-      err = ex;
+  return new Promise(function (resolve, reject) {
+    function tryParseBuffer(buffer) {
+      var err = null;
+      var result;
+      try {
+        result = parseBuffer(buffer);
+        resolve(result);
+      } catch (ex) {
+        err = ex;
+        reject(err);
+      } finally {
+        if (callback) callback(err, result);
+      }
     }
-    callback(err, result);
-  }
 
-  if (Buffer.isBuffer(fileNameOrBuffer)) {
-    return tryParseBuffer(fileNameOrBuffer);
-  } else {
-    fs.readFile(fileNameOrBuffer, function (err, data) {
-      if (err) { return callback(err); }
-      tryParseBuffer(data);
-    });
-  }
+    if (Buffer.isBuffer(fileNameOrBuffer)) {
+      return tryParseBuffer(fileNameOrBuffer);
+    } else {
+      fs.readFile(fileNameOrBuffer, function (err, data) {
+        if (err) {
+          reject(err);
+          return callback(err);
+        }
+        tryParseBuffer(data);
+      });
+    }
+  });
 };
 
 var parseBuffer = exports.parseBuffer = function (buffer) {
@@ -156,7 +164,7 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
 
     function parseInteger() {
       var length = Math.pow(2, objInfo);
-      
+
       if (objInfo == 0x4) {
         var data = buffer.slice(offset + 1, offset + 1 + length);
         var str = bufferToHexString(data);
@@ -250,7 +258,7 @@ var parseBuffer = exports.parseBuffer = function (buffer) {
       // length is String length -> to get byte length multiply by 2, as 1 character takes 2 bytes in UTF-16
       length *= (isUtf16 + 1);
       if (length < exports.maxObjectSize) {
-        var plistString = new Buffer(buffer.slice(offset + stroffset, offset + stroffset + length));
+        var plistString = Buffer.from(buffer.slice(offset + stroffset, offset + stroffset + length));
         if (isUtf16) {
           plistString = swapBytes(plistString);
           enc = "ucs2";
