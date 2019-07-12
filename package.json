@@ -29,6 +29,6 @@
     "url": "https://github.com/nearinfinity/node-bplist-parser.git"
   },
   "dependencies": {
-    "big-integer": "^1.6.43"
+    "big-integer": "^1.6.44"
   }
 }
