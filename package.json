@@ -17,7 +17,8 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "mocha": "^6.1.4"
+    "eslint": "^6.5.1",
+    "mocha": "^6.2.2"
   },
   "homepage": "https://github.com/nearinfinity/node-bplist-parser",
   "bugs": "https://github.com/nearinfinity/node-bplist-parser/issues",
@@ -29,6 +30,6 @@
     "url": "https://github.com/nearinfinity/node-bplist-parser.git"
   },
   "dependencies": {
-    "big-integer": "^1.6.44"
+    "big-integer": "^1.6.47"
   }
 }
