@@ -1,9 +1,11 @@
+/* eslint-disable no-console */
+
 'use strict';
 
-// adapted from http://code.google.com/p/plist/source/browse/trunk/src/com/dd/plist/BinaryPropertyListParser.java
+// adapted from https://github.com/3breadt/dd-plist
 
 const fs = require('fs');
-const bigInt = require("big-integer");
+const bigInt = require('big-integer');
 const debug = false;
 
 exports.maxObjectSize = 100 * 1000 * 1000; // 100Meg
@@ -19,7 +21,7 @@ const UID = exports.UID = function(id) {
   this.UID = id;
 };
 
-const parseFile = exports.parseFile = function (fileNameOrBuffer, callback) {
+exports.parseFile = function (fileNameOrBuffer, callback) {
   return new Promise(function (resolve, reject) {
     function tryParseBuffer(buffer) {
       let err = null;
@@ -96,7 +98,7 @@ const parseBuffer = exports.parseBuffer = function (buffer) {
 
   // Parses an object inside the currently parsed binary property list.
   // For the format specification check
-  // <a href="http://www.opensource.apple.com/source/CF/CF-635/CFBinaryPList.c">
+  // <a href="https://www.opensource.apple.com/source/CF/CF-635/CFBinaryPList.c">
   // Apple's binary property list parser implementation</a>.
   function parseObject(tableOffset) {
     const offset = offsetTable[tableOffset];
