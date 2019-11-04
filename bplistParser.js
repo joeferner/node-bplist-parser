@@ -175,7 +175,7 @@ const parseBuffer = exports.parseBuffer = function (buffer) {
       if (length < exports.maxObjectSize) {
         return readUInt(buffer.slice(offset + 1, offset + 1 + length));
       }
-      throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
+      throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
     }
 
     function parseUID() {
@@ -183,7 +183,7 @@ const parseBuffer = exports.parseBuffer = function (buffer) {
       if (length < exports.maxObjectSize) {
         return new UID(readUInt(buffer.slice(offset + 1, offset + 1 + length)));
       }
-      throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
+      throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
     }
 
     function parseReal() {
@@ -197,7 +197,7 @@ const parseBuffer = exports.parseBuffer = function (buffer) {
           return realBuffer.readDoubleBE(0);
         }
       } else {
-        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
+        throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
     }
 
@@ -230,7 +230,7 @@ const parseBuffer = exports.parseBuffer = function (buffer) {
       if (length < exports.maxObjectSize) {
         return buffer.slice(offset + dataoffset, offset + dataoffset + length);
       }
-      throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
+      throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
     }
 
     function parsePlistString (isUtf16) {
@@ -242,7 +242,7 @@ const parseBuffer = exports.parseBuffer = function (buffer) {
         const int_type = buffer[offset + 1];
         const intType = (int_type & 0xF0) / 0x10;
         if (intType != 0x1) {
-          console.err("UNEXPECTED LENGTH-INT TYPE! " + intType);
+          console.error("UNEXPECTED LENGTH-INT TYPE! " + intType);
         }
         const intInfo = int_type & 0x0F;
         const intLength = Math.pow(2, intInfo);
@@ -263,7 +263,7 @@ const parseBuffer = exports.parseBuffer = function (buffer) {
         }
         return plistString.toString(enc);
       }
-      throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
+      throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
     }
 
     function parseArray() {
@@ -285,7 +285,7 @@ const parseBuffer = exports.parseBuffer = function (buffer) {
         }
       }
       if (length * objectRefSize > exports.maxObjectSize) {
-        throw new Error("To little heap space available!");
+        throw new Error("Too little heap space available!");
       }
       const array = [];
       for (let i = 0; i < length; i++) {
@@ -314,7 +314,7 @@ const parseBuffer = exports.parseBuffer = function (buffer) {
         }
       }
       if (length * 2 * objectRefSize > exports.maxObjectSize) {
-        throw new Error("To little heap space available!");
+        throw new Error("Too little heap space available!");
       }
       if (debug) {
         console.log("Parsing dictionary #" + tableOffset);
