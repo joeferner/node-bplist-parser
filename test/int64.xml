@@ -6,6 +6,8 @@
     <integer>0</integer>
     <key>int32item</key>
     <integer>1234567890</integer>
+    <key>int32itemsigned</key>
+    <integer>-1234567890</integer>
     <key>int64item</key>
     <integer>12345678901234567890</integer>
   </dict>

@@ -170,7 +170,11 @@ const parseBuffer = exports.parseBuffer = function (buffer) {
         return bigInt(str, 16);
       }
       if (objInfo == 0x3) {
-        return buffer.readInt32BE(offset + 1);
+        return buffer.slice(offset + 1, offset + 1 + length).reduce((acc, curr) => {
+          acc <<= 8;
+          acc |= curr & 255;
+          return acc;
+        });
       }
       if (length < exports.maxObjectSize) {
         return readUInt(buffer.slice(offset + 1, offset + 1 + length));
