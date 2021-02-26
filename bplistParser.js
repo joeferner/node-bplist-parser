@@ -163,23 +163,20 @@ const parseBuffer = exports.parseBuffer = function (buffer) {
 
     function parseInteger() {
       const length = Math.pow(2, objInfo);
-
-      if (objInfo == 0x4) {
+      if (length < exports.maxObjectSize) {
         const data = buffer.slice(offset + 1, offset + 1 + length);
-        const str = bufferToHexString(data);
-        return bigInt(str, 16);
-      }
-      if (objInfo == 0x3) {
-        return buffer.slice(offset + 1, offset + 1 + length).reduce((acc, curr) => {
+        if (length === 16) {
+          const str = bufferToHexString(data);
+          return bigInt(str, 16);
+        }
+        return data.reduce((acc, curr) => {
           acc <<= 8;
           acc |= curr & 255;
           return acc;
         });
+      } else {
+        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
-      if (length < exports.maxObjectSize) {
-        return readUInt(buffer.slice(offset + 1, offset + 1 + length));
-      }
-      throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
     }
 
     function parseUID() {
