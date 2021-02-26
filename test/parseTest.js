@@ -99,6 +99,8 @@ describe('bplist-parser', function () {
     console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
 
     assert.equal(dict['zero'], '0');
+    assert.equal(dict['int32item'], '1234567890');
+    assert.equal(dict['int32itemsigned'], '-1234567890');
     assert.equal(dict['int64item'], '12345678901234567890');
   });
 });
