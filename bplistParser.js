@@ -175,7 +175,7 @@ const parseBuffer = exports.parseBuffer = function (buffer) {
           return acc;
         });
       } else {
-        throw new Error("To little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
+        throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + exports.maxObjectSize + " are available.");
       }
     }
 
