@@ -1,6 +1,6 @@
 {
   "name": "bplist-parser",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Binary plist parser.",
   "main": "bplistParser.js",
   "scripts": {
