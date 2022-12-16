@@ -43,7 +43,8 @@ exports.parseFile = function (fileNameOrBuffer, callback) {
     fs.readFile(fileNameOrBuffer, function (err, data) {
       if (err) {
         reject(err);
-        return callback(err);
+        if (callback) callback(err);
+        return;
       }
       tryParseBuffer(data);
     });
