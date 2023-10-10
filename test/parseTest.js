@@ -2,13 +2,15 @@
 
 // tests are adapted from https://github.com/TooTallNate/node-plist
 
-const assert = require('assert');
-const path = require('path');
-const bplist = require('../');
+import assert from 'assert';
+import path from 'path';
+import * as bplist from '../bplistParser.js';
+
+const dirname = path.dirname(new URL(import.meta.url).pathname);
 
 describe('bplist-parser', function () {
   it('iTunes Small', async function () {
-    const file = path.join(__dirname, "iTunes-small.bplist");
+    const file = path.join(dirname, "iTunes-small.bplist");
     const startTime1 = new Date();
 
     const [dict] = await bplist.parseFile(file);
@@ -20,7 +22,7 @@ describe('bplist-parser', function () {
   });
 
   it('sample1', async function () {
-    const file = path.join(__dirname, "sample1.bplist");
+    const file = path.join(dirname, "sample1.bplist");
     const startTime = new Date();
 
     const [dict] = await bplist.parseFile(file);
@@ -32,7 +34,7 @@ describe('bplist-parser', function () {
   });
 
   it('sample2', async function () {
-    const file = path.join(__dirname, "sample2.bplist");
+    const file = path.join(dirname, "sample2.bplist");
     const startTime = new Date();
 
     const [dict] = await bplist.parseFile(file);
@@ -44,7 +46,7 @@ describe('bplist-parser', function () {
   });
 
   it('airplay', async function () {
-    const file = path.join(__dirname, "airplay.bplist");
+    const file = path.join(dirname, "airplay.bplist");
     const startTime = new Date();
 
     const [dict] = await bplist.parseFile(file);
@@ -57,7 +59,7 @@ describe('bplist-parser', function () {
   });
 
   it('utf16', async function () {
-    const file = path.join(__dirname, "utf16.bplist");
+    const file = path.join(dirname, "utf16.bplist");
     const startTime = new Date();
 
     const [dict] = await bplist.parseFile(file);
@@ -71,7 +73,7 @@ describe('bplist-parser', function () {
   });
 
   it('utf16chinese', async function () {
-    const file = path.join(__dirname, "utf16_chinese.plist");
+    const file = path.join(dirname, "utf16_chinese.plist");
     const startTime = new Date();
 
     const [dict] = await bplist.parseFile(file);
@@ -84,7 +86,7 @@ describe('bplist-parser', function () {
   });
 
   it('uid', async function () {
-    const file = path.join(__dirname, "uid.bplist");
+    const file = path.join(dirname, "uid.bplist");
     const startTime = new Date();
 
     const [dict] = await bplist.parseFile(file);
@@ -98,7 +100,7 @@ describe('bplist-parser', function () {
   });
 
   it('int64', async function () {
-    const file = path.join(__dirname, "int64.bplist");
+    const file = path.join(dirname, "int64.bplist");
     const startTime = new Date();
 
     const [dict] = await bplist.parseFile(file);
