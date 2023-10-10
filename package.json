@@ -3,6 +3,7 @@
   "version": "0.3.2",
   "description": "Binary plist parser.",
   "main": "bplistParser.js",
+  "type":"module",
   "scripts": {
     "test": "mocha test"
   },
@@ -18,7 +19,7 @@
   "license": "MIT",
   "devDependencies": {
     "eslint": "6.5.x",
-    "mocha": "6.2.x"
+    "mocha": "10.0.x"
   },
   "homepage": "https://github.com/nearinfinity/node-bplist-parser",
   "bugs": "https://github.com/nearinfinity/node-bplist-parser/issues",
@@ -28,8 +29,5 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/nearinfinity/node-bplist-parser.git"
-  },
-  "dependencies": {
-    "big-integer": "1.6.x"
   }
 }
