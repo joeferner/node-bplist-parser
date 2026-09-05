@@ -58,9 +58,12 @@ export const parseFileSync = function (fileNameOrBuffer) {
 
 export const parseBuffer = function (buffer) {
   // check header
-  const header = buffer.slice(0, 'bplist'.length).toString('utf8');
-  if (header !== 'bplist') {
-    throw new Error("Invalid binary plist. Expected 'bplist' at offset 0.");
+  const header = buffer.slice(0, 'bplist00'.length).toString('utf8');
+  if (header !== 'bplist00') {
+    throw new Error("Invalid binary plist. Expected 'bplist00' at offset 0.");
+  }
+  if (buffer.length < 'bplist00'.length + 32) {
+    throw new Error("Invalid binary plist. Expected a trailer.");
   }
 
   // Handle trailer, last 32 bytes of the file
@@ -152,34 +155,11 @@ export const parseBuffer = function (buffer) {
       }
     }
 
-    function bufferToHexString(buffer) {
-      let str = '';
-      let i;
-      for (i = 0; i < buffer.length; i++) {
-        if (buffer[i] != 0x00) {
-          break;
-        }
-      }
-      for (; i < buffer.length; i++) {
-        const part = '00' + buffer[i].toString(16);
-        str += part.substr(part.length - 2);
-      }
-      return str;
-    }
-
     function parseInteger() {
       const length = Math.pow(2, objInfo);
       if (length < maxObjectSize) {
         const data = buffer.slice(offset + 1, offset + 1 + length);
-        if (length === 16) {
-          const str = bufferToHexString(data);
-          return BigInt(`0x${str}`);
-        }
-        return data.reduce((acc, curr) => {
-          acc <<= 8;
-          acc |= curr & 255;
-          return acc;
-        });
+        return readInteger(data);
       }
         throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + maxObjectSize + " are available.");
 
@@ -349,16 +329,40 @@ function readUInt(buffer, start) {
 
   let l = 0;
   for (let i = start; i < buffer.length; i++) {
-    l <<= 8;
-    l |= buffer[i] & 0xFF;
+    l = (l * 0x100) + buffer[i];
   }
   return l;
+}
+
+function readBigUInt(buffer) {
+  let value = 0n;
+  for (const byte of buffer) {
+    value = (value << 8n) | BigInt(byte);
+  }
+  return value;
+}
+
+function simplifyInteger(value) {
+  if (value >= BigInt(Number.MIN_SAFE_INTEGER) && value <= BigInt(Number.MAX_SAFE_INTEGER)) {
+    return Number(value);
+  }
+  return value;
+}
+
+function readInteger(buffer) {
+  let value = readBigUInt(buffer);
+
+  if (buffer.length === 8 && (buffer[0] & 0x80)) {
+    value -= 1n << 64n;
+  }
+
+  return simplifyInteger(value);
 }
 
 // we're just going to toss the high order bits because javascript doesn't have 64-bit ints
 function readUInt64BE(buffer, start) {
   const data = buffer.slice(start, start + 8);
-  return data.readUInt32BE(4, 8);
+  return readUInt(data, 0);
 }
 
 function swapBytes(buffer) {
