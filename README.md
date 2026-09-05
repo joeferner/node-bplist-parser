@@ -12,17 +12,49 @@ $ npm install bplist-parser
 
 ## Quick Examples
 
+This package ships both ES module and CommonJS builds, so either import style works.
+
 ```javascript
+// ESM
+import { parseFile } from 'bplist-parser';
+
+const [obj] = await parseFile('myPlist.bplist');
+console.log(JSON.stringify(obj));
+```
+
+```javascript
+// CommonJS
 const bplist = require('bplist-parser');
 
 (async () => {
-
-  const obj = await bplist.parseFile('myPlist.bplist');
-
+  const [obj] = await bplist.parseFile('myPlist.bplist');
   console.log(JSON.stringify(obj));
-
 })();
 ```
+
+`parseFileSync` and `parseBuffer` are also exported, and both return an array of
+the plist's root objects.
+
+## Limits
+
+The parser refuses plists that would allocate more than `maxObjectSize` bytes or
+contain more than `maxObjectCount` objects. Both are readable as exports and
+adjusted through setters:
+
+```javascript
+import { setMaxObjectSize, setMaxObjectCount } from 'bplist-parser';
+
+setMaxObjectSize(200 * 1000 * 1000);
+setMaxObjectCount(65536);
+```
+
+> **Note:** before 0.4.0 these were assignable (`bplist.maxObjectSize = n`).
+> Exported bindings are read-only in both module systems now, so assignment must
+> be replaced with the setters above.
+
+## Requirements
+
+Node.js 20.19 or newer.
 
 ## License
 

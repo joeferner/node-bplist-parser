@@ -4,11 +4,22 @@
 
 // adapted from https://github.com/3breadt/dd-plist
 
-import fs from 'fs';
+import fs from 'node:fs';
 const debug = false;
 
-export var maxObjectSize = 100 * 1000 * 1000; // 100Meg
-export var maxObjectCount = 32768;
+export let maxObjectSize = 100 * 1000 * 1000; // 100Meg
+export let maxObjectCount = 32768;
+
+// Exported bindings are read-only to consumers (an ESM import binding cannot be
+// assigned, and the CommonJS build exposes exports as getters), so these knobs
+// are tuned through setters rather than by assigning to the exports.
+export function setMaxObjectSize(value) {
+  maxObjectSize = value;
+}
+
+export function setMaxObjectCount(value) {
+  maxObjectCount = value;
+}
 
 // EPOCH = new SimpleDateFormat("yyyy MM dd zzz").parse("2001 01 01 GMT").getTime();
 // ...but that's annoying in a static initializer because it can throw exceptions, ick.
