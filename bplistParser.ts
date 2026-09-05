@@ -1,7 +1,5 @@
 /* eslint-disable no-console */
 
-'use strict';
-
 // adapted from https://github.com/3breadt/dd-plist
 
 import fs from 'node:fs';
@@ -13,11 +11,11 @@ export let maxObjectCount = 32768;
 // Exported bindings are read-only to consumers (an ESM import binding cannot be
 // assigned, and the CommonJS build exposes exports as getters), so these knobs
 // are tuned through setters rather than by assigning to the exports.
-export function setMaxObjectSize(value) {
+export function setMaxObjectSize(value: number): void {
   maxObjectSize = value;
 }
 
-export function setMaxObjectCount(value) {
+export function setMaxObjectCount(value: number): void {
   maxObjectCount = value;
 }
 
@@ -26,21 +24,30 @@ export function setMaxObjectCount(value) {
 // So we just hardcode the correct value.
 const EPOCH = 978307200000;
 
-// UID object definition
-export const UID = function(id) {
-  this.UID = id;
-};
+/** Wrapper for a CoreFoundation keyed-archiver UID value. */
+export class UID {
+  UID: number;
 
-export const parseFile = function (fileNameOrBuffer, callback) {
-  return new Promise(function (resolve, reject) {
-    function tryParseBuffer(buffer) {
-      let err = null;
-      let result;
+  constructor(id: number) {
+    this.UID = id;
+  }
+}
+
+export type CallbackFunction<T = any> = (error: Error | null, result?: [T]) => void;
+
+export function parseFile<T = any>(
+  fileNameOrBuffer: string | Buffer,
+  callback?: CallbackFunction<T>
+): Promise<[T]> {
+  return new Promise<[T]>(function (resolve, reject) {
+    function tryParseBuffer(buffer: Buffer) {
+      let err: Error | null = null;
+      let result: [T] | undefined;
       try {
-        result = parseBuffer(buffer);
+        result = parseBuffer<T>(buffer);
         resolve(result);
       } catch (ex) {
-        err = ex;
+        err = ex as Error;
         reject(err);
       } finally {
         if (callback) callback(err, result);
@@ -59,16 +66,14 @@ export const parseFile = function (fileNameOrBuffer, callback) {
       tryParseBuffer(data);
     });
   });
-};
+}
 
-export const parseFileSync = function (fileNameOrBuffer) {
-  if (!Buffer.isBuffer(fileNameOrBuffer)) {
-    fileNameOrBuffer = fs.readFileSync(fileNameOrBuffer);
-  }
-  return parseBuffer(fileNameOrBuffer);
-};
+export function parseFileSync<T = any>(fileNameOrBuffer: string | Buffer): [T] {
+  const buffer = Buffer.isBuffer(fileNameOrBuffer) ? fileNameOrBuffer : fs.readFileSync(fileNameOrBuffer);
+  return parseBuffer<T>(buffer);
+}
 
-export const parseBuffer = function (buffer) {
+export function parseBuffer<T = any>(buffer: Buffer): [T] {
   // check header
   const header = buffer.slice(0, 'bplist00'.length).toString('utf8');
   if (header !== 'bplist00') {
@@ -107,7 +112,7 @@ export const parseBuffer = function (buffer) {
   }
 
   // Handle offset table
-  const offsetTable = [];
+  const offsetTable: number[] = [];
 
   for (let i = 0; i < numObjects; i++) {
     const offsetBytes = buffer.slice(offsetTableOffset + i * offsetSize, offsetTableOffset + (i + 1) * offsetSize);
@@ -121,7 +126,7 @@ export const parseBuffer = function (buffer) {
   // For the format specification check
   // <a href="https://www.opensource.apple.com/source/CF/CF-635/CFBinaryPList.c">
   // Apple's binary property list parser implementation</a>.
-  function parseObject(tableOffset) {
+  function parseObject(tableOffset: number): any {
     const offset = offsetTable[tableOffset];
     const type = buffer[offset];
     const objType = (type & 0xF0) >> 4; //First  4 bits
@@ -151,7 +156,7 @@ export const parseBuffer = function (buffer) {
       throw new Error("Unhandled type 0x" + objType.toString(16));
     }
 
-    function parseSimple() {
+    function parseSimple(): any {
       //Simple
       switch (objInfo) {
       case 0x0: // null
@@ -167,7 +172,7 @@ export const parseBuffer = function (buffer) {
       }
     }
 
-    function parseInteger() {
+    function parseInteger(): number | bigint {
       const length = Math.pow(2, objInfo);
       if (length < maxObjectSize) {
         const data = buffer.slice(offset + 1, offset + 1 + length);
@@ -177,7 +182,7 @@ export const parseBuffer = function (buffer) {
 
     }
 
-    function parseUID() {
+    function parseUID(): UID {
       const length = objInfo + 1;
       if (length < maxObjectSize) {
         return new UID(readUInt(buffer.slice(offset + 1, offset + 1 + length)));
@@ -185,7 +190,7 @@ export const parseBuffer = function (buffer) {
       throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + maxObjectSize + " are available.");
     }
 
-    function parseReal() {
+    function parseReal(): number | undefined {
       const length = Math.pow(2, objInfo);
       if (length < maxObjectSize) {
         const realBuffer = buffer.slice(offset + 1, offset + 1 + length);
@@ -200,7 +205,7 @@ export const parseBuffer = function (buffer) {
       }
     }
 
-    function parseDate() {
+    function parseDate(): Date {
       if (objInfo != 0x3) {
         console.error("Unknown date type :" + objInfo + ". Parsing anyway...");
       }
@@ -208,7 +213,7 @@ export const parseBuffer = function (buffer) {
       return new Date(EPOCH + (1000 * dateBuffer.readDoubleBE(0)));
     }
 
-    function parseData() {
+    function parseData(): Buffer {
       let dataoffset = 1;
       let length = objInfo;
       if (objInfo == 0xF) {
@@ -232,9 +237,9 @@ export const parseBuffer = function (buffer) {
       throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + maxObjectSize + " are available.");
     }
 
-    function parsePlistString (isUtf16) {
-      isUtf16 = isUtf16 || 0;
-      let enc = "utf8";
+    function parsePlistString(isUtf16?: boolean): string {
+      const utf16Flag = isUtf16 || false;
+      let enc: BufferEncoding = "utf8";
       let length = objInfo;
       let stroffset = 1;
       if (objInfo == 0xF) {
@@ -253,10 +258,10 @@ export const parseBuffer = function (buffer) {
         }
       }
       // length is String length -> to get byte length multiply by 2, as 1 character takes 2 bytes in UTF-16
-      length *= (isUtf16 + 1);
+      length *= (utf16Flag ? 2 : 1);
       if (length < maxObjectSize) {
         let plistString = Buffer.from(buffer.slice(offset + stroffset, offset + stroffset + length));
-        if (isUtf16) {
+        if (utf16Flag) {
           plistString = swapBytes(plistString);
           enc = "ucs2";
         }
@@ -265,7 +270,7 @@ export const parseBuffer = function (buffer) {
       throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + maxObjectSize + " are available.");
     }
 
-    function parseArray() {
+    function parseArray(): any[] {
       let length = objInfo;
       let arrayoffset = 1;
       if (objInfo == 0xF) {
@@ -286,7 +291,7 @@ export const parseBuffer = function (buffer) {
       if (length * objectRefSize > maxObjectSize) {
         throw new Error("Too little heap space available!");
       }
-      const array = [];
+      const array: any[] = [];
       for (let i = 0; i < length; i++) {
         const objRef = readUInt(buffer.slice(offset + arrayoffset + i * objectRefSize, offset + arrayoffset + (i + 1) * objectRefSize));
         array[i] = parseObject(objRef);
@@ -294,7 +299,7 @@ export const parseBuffer = function (buffer) {
       return array;
     }
 
-    function parseDictionary() {
+    function parseDictionary(): Record<string, any> {
       let length = objInfo;
       let dictoffset = 1;
       if (objInfo == 0xF) {
@@ -318,7 +323,7 @@ export const parseBuffer = function (buffer) {
       if (debug) {
         console.log("Parsing dictionary #" + tableOffset);
       }
-      const dict = {};
+      const dict: Record<string, any> = {};
       for (let i = 0; i < length; i++) {
         const keyRef = readUInt(buffer.slice(offset + dictoffset + i * objectRefSize, offset + dictoffset + (i + 1) * objectRefSize));
         const valRef = readUInt(buffer.slice(offset + dictoffset + (length * objectRefSize) + i * objectRefSize, offset + dictoffset + (length * objectRefSize) + (i + 1) * objectRefSize));
@@ -334,9 +339,9 @@ export const parseBuffer = function (buffer) {
   }
 
   return [ parseObject(topObject) ];
-};
+}
 
-function readUInt(buffer, start) {
+function readUInt(buffer: Buffer, start?: number): number {
   start = start || 0;
 
   let l = 0;
@@ -346,7 +351,7 @@ function readUInt(buffer, start) {
   return l;
 }
 
-function readBigUInt(buffer) {
+function readBigUInt(buffer: Buffer): bigint {
   let value = 0n;
   for (const byte of buffer) {
     value = (value << 8n) | BigInt(byte);
@@ -354,14 +359,14 @@ function readBigUInt(buffer) {
   return value;
 }
 
-function simplifyInteger(value) {
+function simplifyInteger(value: bigint): number | bigint {
   if (value >= BigInt(Number.MIN_SAFE_INTEGER) && value <= BigInt(Number.MAX_SAFE_INTEGER)) {
     return Number(value);
   }
   return value;
 }
 
-function readInteger(buffer) {
+function readInteger(buffer: Buffer): number | bigint {
   let value = readBigUInt(buffer);
 
   if (buffer.length === 8 && (buffer[0] & 0x80)) {
@@ -372,12 +377,12 @@ function readInteger(buffer) {
 }
 
 // we're just going to toss the high order bits because javascript doesn't have 64-bit ints
-function readUInt64BE(buffer, start) {
+function readUInt64BE(buffer: Buffer, start: number): number {
   const data = buffer.slice(start, start + 8);
   return readUInt(data, 0);
 }
 
-function swapBytes(buffer) {
+function swapBytes<T extends Buffer>(buffer: T): T {
   const len = buffer.length;
   for (let i = 0; i < len; i += 2) {
     const a = buffer[i];

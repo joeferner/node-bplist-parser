@@ -1,7 +1,8 @@
 import { build } from 'esbuild';
-import { copyFile, mkdir, readFile, writeFile } from 'fs/promises';
+import { execFileSync } from 'node:child_process';
+import { mkdir, readFile, rm, writeFile } from 'fs/promises';
 
-const entry = 'bplistParser.js';
+const entry = 'bplistParser.ts';
 const outdir = 'dist';
 
 await mkdir(outdir, { recursive: true });
@@ -20,10 +21,15 @@ await Promise.all([
   build({ ...common, format: 'cjs', outfile: `${outdir}/index.cjs` }),
 ]);
 
-// Ship the same declarations under both extensions so `import` and `require`
-// consumers each resolve types under their own resolution mode.
-const types = await readFile('bplistParser.d.ts', 'utf8');
-await writeFile(`${outdir}/index.d.ts`, types);
-await writeFile(`${outdir}/index.d.cts`, types);
+// tsc emits the declaration for the entry file into dist/types; ship the same
+// declarations under both extensions so `import` and `require` consumers each
+// resolve types under their own resolution mode.
+execFileSync('npx', ['tsc', '-p', 'tsconfig.build.json'], { stdio: 'inherit' });
+const types = await readFile(`${outdir}/types/bplistParser.d.ts`, 'utf8');
+await Promise.all([
+  writeFile(`${outdir}/index.d.ts`, types),
+  writeFile(`${outdir}/index.d.cts`, types),
+]);
+await rm(`${outdir}/types`, { recursive: true, force: true });
 
 console.log('built', outdir);

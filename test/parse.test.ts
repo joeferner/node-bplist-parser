@@ -14,7 +14,7 @@ describe('bplist-parser', function () {
 
     const [dict] = await bplist.parseFile(file);
     const endTime = new Date();
-    console.log('Parsed "' + file + '" in ' + (endTime - startTime1) + 'ms');
+    console.log('Parsed "' + file + '" in ' + (endTime.getTime() - startTime1.getTime()) + 'ms');
     assert.equal(dict['Application Version'], "9.0.3");
     assert.equal(dict['Library Persistent ID'], "6F81D37F95101437");
     assert.deepEqual(dict, bplist.parseFileSync(file)[0]);
@@ -26,7 +26,7 @@ describe('bplist-parser', function () {
 
     const [dict] = await bplist.parseFile(file);
     const endTime = new Date();
-    console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
+    console.log('Parsed "' + file + '" in ' + (endTime.getTime() - startTime.getTime()) + 'ms');
 
     assert.equal(dict['CFBundleIdentifier'], 'com.apple.dictionary.MySample');
     assert.deepEqual(dict, bplist.parseFileSync(file)[0]);
@@ -38,7 +38,7 @@ describe('bplist-parser', function () {
 
     const [dict] = await bplist.parseFile(file);
     const endTime = new Date();
-    console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
+    console.log('Parsed "' + file + '" in ' + (endTime.getTime() - startTime.getTime()) + 'ms');
 
     assert.equal(dict['PopupMenu'][2]['Key'], "\n        #import <Cocoa/Cocoa.h>\n\n#import <MacRuby/MacRuby.h>\n\nint main(int argc, char *argv[])\n{\n  return macruby_main(\"rb_main.rb\", argc, argv);\n}\n");
     assert.deepEqual(dict, bplist.parseFileSync(file)[0]);
@@ -50,7 +50,7 @@ describe('bplist-parser', function () {
 
     const [dict] = await bplist.parseFile(file);
     const endTime = new Date();
-    console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
+    console.log('Parsed "' + file + '" in ' + (endTime.getTime() - startTime.getTime()) + 'ms');
 
     assert.equal(dict['duration'], 5555.0495000000001);
     assert.equal(dict['position'], 4.6269989039999997);
@@ -63,7 +63,7 @@ describe('bplist-parser', function () {
 
     const [dict] = await bplist.parseFile(file);
     const endTime = new Date();
-    console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
+    console.log('Parsed "' + file + '" in ' + (endTime.getTime() - startTime.getTime()) + 'ms');
 
     assert.equal(dict['CFBundleName'], 'sellStuff');
     assert.equal(dict['CFBundleShortVersionString'], '2.6.1');
@@ -77,7 +77,7 @@ describe('bplist-parser', function () {
 
     const [dict] = await bplist.parseFile(file);
     const endTime = new Date();
-    console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
+    console.log('Parsed "' + file + '" in ' + (endTime.getTime() - startTime.getTime()) + 'ms');
 
     assert.equal(dict['CFBundleName'], '天翼阅读');
     assert.equal(dict['CFBundleDisplayName'], '天翼阅读');
@@ -90,7 +90,7 @@ describe('bplist-parser', function () {
 
     const [dict] = await bplist.parseFile(file);
     const endTime = new Date();
-    console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
+    console.log('Parsed "' + file + '" in ' + (endTime.getTime() - startTime.getTime()) + 'ms');
 
     assert.deepEqual(dict['$objects'][1]['NS.keys'], [{UID:2}, {UID:3}, {UID:4}]);
     assert.deepEqual(dict['$objects'][1]['NS.objects'], [{UID: 5}, {UID:6}, {UID:7}]);
@@ -104,7 +104,7 @@ describe('bplist-parser', function () {
 
     const [dict] = await bplist.parseFile(file);
     const endTime = new Date();
-    console.log('Parsed "' + file + '" in ' + (endTime - startTime) + 'ms');
+    console.log('Parsed "' + file + '" in ' + (endTime.getTime() - startTime.getTime()) + 'ms');
 
     assert.equal(dict['zero'], '0');
     assert.equal(dict['int32item'], '1234567890');
@@ -154,7 +154,9 @@ describe('bplist-parser', function () {
   });
 });
 
-function makeIntegerArray(cases) {
+type IntegerCase = { value: bigint; bytes: number; expected: number | bigint };
+
+function makeIntegerArray(cases: IntegerCase[]): Buffer {
   if (cases.length >= 15) {
     throw new Error('test helper only supports short arrays');
   }
@@ -165,7 +167,7 @@ function makeIntegerArray(cases) {
     ...cases.map((_, index) => writeUIntBE(index + 1, objectRefSize))
   ]);
   const objects = [root, ...cases.map(({value, bytes}) => makeIntegerObject(value, bytes))];
-  const offsets = [];
+  const offsets: number[] = [];
   let offset = 8;
 
   for (const object of objects) {
@@ -192,8 +194,8 @@ function makeIntegerArray(cases) {
   ]);
 }
 
-function makeIntegerObject(value, byteLength) {
-  const widthInfo = {
+function makeIntegerObject(value: bigint, byteLength: number): Buffer {
+  const widthInfo: Record<number, number> = {
     1: 0,
     2: 1,
     4: 2,
@@ -210,7 +212,7 @@ function makeIntegerObject(value, byteLength) {
   ]);
 }
 
-function writeUIntBE(value, byteLength) {
+function writeUIntBE(value: bigint | number, byteLength: number): Buffer {
   let integer = BigInt(value);
 
   if (integer < 0n) {
@@ -225,7 +227,7 @@ function writeUIntBE(value, byteLength) {
   return buffer;
 }
 
-function byteWidth(value) {
+function byteWidth(value: number): number {
   if (value <= 0xff) {
     return 1;
   }
