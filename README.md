@@ -35,6 +35,26 @@ const bplist = require('bplist-parser');
 `parseFileSync` and `parseBuffer` are also exported, and both return an array of
 the plist's root objects.
 
+## Integers
+
+Integer values are returned as a plain `number` when they fit within
+`Number.MAX_SAFE_INTEGER`, and as a native `bigint` when they don't. The type of
+a given field depends on the value stored in the plist, not on its declared
+byte width, so code that consumes parsed output should be prepared to handle
+either type for any integer field.
+
+In particular, `JSON.stringify` throws on `bigint` values ("Do not know how to
+serialize a BigInt"). If you serialize parsed results to JSON, use a
+[replacer function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify#the_replacer_parameter)
+to convert `bigint`s to strings or numbers first:
+
+```javascript
+JSON.stringify(obj, (_key, value) => typeof value === 'bigint' ? value.toString() : value);
+```
+
+> **Note:** before 0.5.0, integers too large for `Number.MAX_SAFE_INTEGER` were
+> wrapped in a `big-integer` instance instead of a plain `bigint`.
+
 ## Limits
 
 The parser refuses plists that would allocate more than `maxObjectSize` bytes or
