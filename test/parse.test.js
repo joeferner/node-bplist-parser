@@ -1,12 +1,11 @@
-'use strict';
-
 // tests are adapted from https://github.com/TooTallNate/node-plist
 
-import assert from 'assert';
-import path from 'path';
+import assert from 'node:assert';
+import path from 'node:path';
+import { describe, it } from 'vitest';
 import * as bplist from '../bplistParser.js';
 
-const dirname = path.dirname(new URL(import.meta.url).pathname);
+const dirname = import.meta.dirname;
 
 describe('bplist-parser', function () {
   it('iTunes Small', async function () {

@@ -1,11 +1,33 @@
 {
   "name": "bplist-parser",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Binary plist parser.",
-  "main": "bplistParser.js",
-  "type":"module",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "mocha test"
+    "build": "node build.js",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "smoke": "npm run build && node smoke.cjs",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "bplist",
@@ -18,13 +40,16 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "eslint": "6.5.x",
-    "mocha": "10.0.x"
+    "@eslint/js": "10.0.x",
+    "esbuild": "0.28.x",
+    "eslint": "10.10.x",
+    "globals": "17.12.x",
+    "vitest": "5.0.x"
   },
   "homepage": "https://github.com/nearinfinity/node-bplist-parser",
   "bugs": "https://github.com/nearinfinity/node-bplist-parser/issues",
   "engines": {
-    "node": ">= 5.10.0"
+    "node": ">=20.19.0"
   },
   "repository": {
     "type": "git",
