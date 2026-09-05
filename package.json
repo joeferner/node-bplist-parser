@@ -50,13 +50,13 @@
     "typescript-eslint": "8.69.x",
     "vitest": "5.0.x"
   },
-  "homepage": "https://github.com/nearinfinity/node-bplist-parser",
-  "bugs": "https://github.com/nearinfinity/node-bplist-parser/issues",
+  "homepage": "https://github.com/joeferner/node-bplist-parser",
+  "bugs": "https://github.com/joeferner/node-bplist-parser/issues",
   "engines": {
     "node": ">=20.19.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nearinfinity/node-bplist-parser.git"
+    "url": "https://github.com/joeferner/node-bplist-parser.git"
   }
 }
