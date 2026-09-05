@@ -19,7 +19,7 @@
   "license": "MIT",
   "devDependencies": {
     "eslint": "6.5.x",
-    "mocha": "10.0.x"
+    "mocha": "10.8.x"
   },
   "homepage": "https://github.com/nearinfinity/node-bplist-parser",
   "bugs": "https://github.com/nearinfinity/node-bplist-parser/issues",
