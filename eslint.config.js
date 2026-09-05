@@ -1,11 +1,22 @@
 import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
 import globals from 'globals';
 
-export default [
+export default tseslint.config(
   {
     ignores: ['dist/**', 'node_modules/**'],
   },
   js.configs.recommended,
+  {
+    files: ['**/*.ts'],
+    extends: [...tseslint.configs.recommended],
+    rules: {
+      // Parsing/creating plists is inherently dynamic (arbitrary nested
+      // dicts/arrays of unknown shape); `any` is the honest type here, not a
+      // shortcut.
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
   {
     languageOptions: {
       ecmaVersion: 2022,
@@ -48,4 +59,4 @@ export default [
       },
     },
   },
-];
+);

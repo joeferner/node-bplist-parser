@@ -1,6 +1,6 @@
 {
   "name": "bplist-parser",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Binary plist parser.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -25,9 +25,10 @@
   "scripts": {
     "build": "node build.js",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "smoke": "npm run build && node smoke.cjs",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run typecheck && npm run build"
   },
   "keywords": [
     "bplist",
@@ -41,9 +42,12 @@
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "10.0.x",
+    "@types/node": "26.4.x",
     "esbuild": "0.28.x",
     "eslint": "10.10.x",
     "globals": "17.12.x",
+    "typescript": "6.0.x",
+    "typescript-eslint": "8.69.x",
     "vitest": "5.0.x"
   },
   "homepage": "https://github.com/nearinfinity/node-bplist-parser",
