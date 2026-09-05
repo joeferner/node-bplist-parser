@@ -1,5 +1,7 @@
 # bplist-parser
 
+[![CI](https://github.com/joeferner/node-bplist-parser/actions/workflows/ci.yml/badge.svg)](https://github.com/joeferner/node-bplist-parser/actions/workflows/ci.yml)
+
 Binary Mac OS X Plist (property list) parser.
 
 ## Installation
