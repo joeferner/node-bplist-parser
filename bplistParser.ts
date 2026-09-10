@@ -7,6 +7,12 @@ const debug = false;
 
 export let maxObjectSize = 100 * 1000 * 1000; // 100Meg
 export let maxObjectCount = 32768;
+// Objects are addressed by index, so one stored object can be referenced many
+// times. maxObjectCount bounds how many objects are *stored*, not how many are
+// *expanded*, and a small file can therefore describe a very large tree (each
+// level referencing the level below twice gives 2^n expansions from n objects).
+// This caps the total expansion instead.
+export let maxExpandedObjectCount = 1000000;
 
 // Exported bindings are read-only to consumers (an ESM import binding cannot be
 // assigned, and the CommonJS build exposes exports as getters), so these knobs
@@ -17,6 +23,10 @@ export function setMaxObjectSize(value: number): void {
 
 export function setMaxObjectCount(value: number): void {
   maxObjectCount = value;
+}
+
+export function setMaxExpandedObjectCount(value: number): void {
+  maxExpandedObjectCount = value;
 }
 
 // EPOCH = new SimpleDateFormat("yyyy MM dd zzz").parse("2001 01 01 GMT").getTime();
@@ -126,7 +136,29 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
   // For the format specification check
   // <a href="https://www.opensource.apple.com/source/CF/CF-635/CFBinaryPList.c">
   // Apple's binary property list parser implementation</a>.
+  // Guards against a small file describing an unbounded object graph: an
+  // expansion budget (a DAG that references each level twice expands to 2^n)
+  // and a cycle check (an object that transitively references itself would
+  // otherwise recurse until the stack overflows).
+  let expandedObjectCount = 0;
+  const objectsBeingParsed = new Set<number>();
+
   function parseObject(tableOffset: number): any {
+    if (++expandedObjectCount > maxExpandedObjectCount) {
+      throw new Error("maxExpandedObjectCount exceeded");
+    }
+    if (objectsBeingParsed.has(tableOffset)) {
+      throw new Error("Circular reference detected at object #" + tableOffset);
+    }
+    objectsBeingParsed.add(tableOffset);
+    try {
+      return parseObjectAt(tableOffset);
+    } finally {
+      objectsBeingParsed.delete(tableOffset);
+    }
+  }
+
+  function parseObjectAt(tableOffset: number): any {
     const offset = offsetTable[tableOffset];
     const type = buffer[offset];
     const objType = (type & 0xF0) >> 4; //First  4 bits
