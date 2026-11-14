@@ -364,7 +364,9 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
         if (debug) {
           console.log("  DICT #" + tableOffset + ": Mapped " + key + " to " + val);
         }
-        dict[key] = val;
+        // not `dict[key] = val`: for "__proto__" (or a key that coerces to
+        // it) that calls the prototype setter instead of adding the key
+        Object.defineProperty(dict, key, { value: val, enumerable: true, writable: true, configurable: true });
       }
       return dict;
     }

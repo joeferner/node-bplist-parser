@@ -147,6 +147,25 @@ describe('bplist-parser', function () {
     assert.deepStrictEqual(values, cases.map(({expected}) => expected));
   });
 
+  it('keeps a "__proto__" dictionary key as an own property', function () {
+    // plistlib.dumps({"__proto__": {"isAdmin": True}, "name": "x"}, fmt=plistlib.FMT_BINARY)
+    const buf = Buffer.from(
+      'YnBsaXN0MDDSAQIDBllfX3Byb3RvX19UbmFtZdEEBVdpc0FkbWluCVF4CA0XHB8nKAAAAAAAAAEBAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAq',
+      'base64'
+    );
+    const [dict] = bplist.parseBuffer(buf);
+    assert.deepStrictEqual(Object.keys(dict), ['__proto__', 'name']);
+    assert.equal(Object.getPrototypeOf(dict), Object.prototype);
+    assert.equal(dict.isAdmin, undefined);
+    assert.deepStrictEqual(Object.getOwnPropertyDescriptor(dict, '__proto__'), {
+      value: { isAdmin: true },
+      enumerable: true,
+      writable: true,
+      configurable: true
+    });
+    assert.equal(dict.name, 'x');
+  });
+
   it('rejects a truncated plist header', function () {
     assert.throws(function () {
       bplist.parseBuffer(Buffer.from('bplist00'));
