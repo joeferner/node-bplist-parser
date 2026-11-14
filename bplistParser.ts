@@ -1,5 +1,3 @@
-/* eslint-disable no-console */
-
 // adapted from https://github.com/3breadt/dd-plist
 
 import fs from 'node:fs';
@@ -238,7 +236,7 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
     }
 
     function parseDate(): Date {
-      if (objInfo != 0x3) {
+      if (objInfo !== 0x3) {
         console.error("Unknown date type :" + objInfo + ". Parsing anyway...");
       }
       const dateBuffer = buffer.slice(offset + 1, offset + 9);
@@ -248,10 +246,10 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
     function parseData(): Buffer {
       let dataoffset = 1;
       let length = objInfo;
-      if (objInfo == 0xF) {
+      if (objInfo === 0xF) {
         const int_type = buffer[offset + 1];
         const intType = (int_type & 0xF0) / 0x10;
-        if (intType != 0x1) {
+        if (intType !== 0x1) {
           console.error("0x4: UNEXPECTED LENGTH-INT TYPE! " + intType);
         }
         const intInfo = int_type & 0x0F;
@@ -274,10 +272,10 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
       let enc: BufferEncoding = "utf8";
       let length = objInfo;
       let stroffset = 1;
-      if (objInfo == 0xF) {
+      if (objInfo === 0xF) {
         const int_type = buffer[offset + 1];
         const intType = (int_type & 0xF0) / 0x10;
-        if (intType != 0x1) {
+        if (intType !== 0x1) {
           console.error("UNEXPECTED LENGTH-INT TYPE! " + intType);
         }
         const intInfo = int_type & 0x0F;
@@ -305,10 +303,10 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
     function parseArray(): any[] {
       let length = objInfo;
       let arrayoffset = 1;
-      if (objInfo == 0xF) {
+      if (objInfo === 0xF) {
         const int_type = buffer[offset + 1];
         const intType = (int_type & 0xF0) / 0x10;
-        if (intType != 0x1) {
+        if (intType !== 0x1) {
           console.error("0xa: UNEXPECTED LENGTH-INT TYPE! " + intType);
         }
         const intInfo = int_type & 0x0F;
@@ -334,10 +332,10 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
     function parseDictionary(): Record<string, any> {
       let length = objInfo;
       let dictoffset = 1;
-      if (objInfo == 0xF) {
+      if (objInfo === 0xF) {
         const int_type = buffer[offset + 1];
         const intType = (int_type & 0xF0) / 0x10;
-        if (intType != 0x1) {
+        if (intType !== 0x1) {
           console.error("0xD: UNEXPECTED LENGTH-INT TYPE! " + intType);
         }
         const intInfo = int_type & 0x0F;

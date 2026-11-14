@@ -53,7 +53,7 @@
   "homepage": "https://github.com/joeferner/node-bplist-parser",
   "bugs": "https://github.com/joeferner/node-bplist-parser/issues",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22.12.0"
   },
   "repository": {
     "type": "git",
