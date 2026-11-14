@@ -74,7 +74,7 @@ setMaxObjectCount(65536);
 
 ## Requirements
 
-Node.js 20.19 or newer.
+Node.js 22.12 or newer.
 
 ## License
 
