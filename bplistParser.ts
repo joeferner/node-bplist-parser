@@ -34,9 +34,9 @@ const EPOCH = 978307200000;
 
 /** Wrapper for a CoreFoundation keyed-archiver UID value. */
 export class UID {
-  UID: number;
+  UID: number | bigint;
 
-  constructor(id: number) {
+  constructor(id: number | bigint) {
     this.UID = id;
   }
 }
@@ -214,10 +214,10 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
 
     function parseUID(): UID {
       const length = objInfo + 1;
-      if (length < maxObjectSize) {
-        return new UID(readUInt(buffer.slice(offset + 1, offset + 1 + length)));
+      if (length > 8) {
+        throw new Error("Invalid binary plist. UID length must be between 1 and 8 bytes.");
       }
-      throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + maxObjectSize + " are available.");
+      return new UID(simplifyInteger(readBigUInt(buffer.slice(offset + 1, offset + 1 + length))));
     }
 
     function parseReal(): number | undefined {

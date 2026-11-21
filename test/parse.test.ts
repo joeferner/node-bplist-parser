@@ -171,7 +171,48 @@ describe('bplist-parser', function () {
       bplist.parseBuffer(Buffer.from('bplist00'));
     }, /Invalid binary plist/);
   });
+
+  it('parses UIDs larger than 2^53 without losing precision', function () {
+    const cases = [
+      { value: 0n, bytes: 1 },
+      { value: 255n, bytes: 1 },
+      { value: 256n, bytes: 2 },
+      { value: 4294967296n, bytes: 8 },
+      { value: 2n ** 63n, bytes: 8 }
+    ];
+
+    for (const {value, bytes} of cases) {
+      const object = Buffer.concat([Buffer.from([0x80 | (bytes - 1)]), writeUIntBE(value, bytes)]);
+      const [parsed] = bplist.parseBuffer(makeSingleObjectPlist(object));
+      const expected = value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value;
+      assert.strictEqual(parsed.UID, expected);
+    }
+  });
+
+  it('rejects UIDs wider than 8 bytes', function () {
+    const object = Buffer.concat([Buffer.from([0x88]), writeUIntBE(1n, 9)]);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(object)), /UID length/);
+  });
 });
+
+function makeSingleObjectPlist(object: Buffer): Buffer {
+  const offsetTableOffset = 8 + object.length;
+  const offsetSize = byteWidth(offsetTableOffset);
+  const trailer = Buffer.concat([
+    Buffer.alloc(6),
+    Buffer.from([offsetSize, 1]),
+    writeUIntBE(1, 8),
+    writeUIntBE(0, 8),
+    writeUIntBE(offsetTableOffset, 8)
+  ]);
+
+  return Buffer.concat([
+    Buffer.from('bplist00'),
+    object,
+    writeUIntBE(8, offsetSize),
+    trailer
+  ]);
+}
 
 type IntegerCase = { value: bigint; bytes: number; expected: number | bigint };
 
