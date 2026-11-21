@@ -220,19 +220,16 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
       throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + maxObjectSize + " are available.");
     }
 
-    function parseReal(): number | undefined {
+    function parseReal(): number {
       const length = Math.pow(2, objInfo);
-      if (length < maxObjectSize) {
-        const realBuffer = buffer.slice(offset + 1, offset + 1 + length);
-        if (length === 4) {
-          return realBuffer.readFloatBE(0);
-        }
-        if (length === 8) {
-          return realBuffer.readDoubleBE(0);
-        }
-      } else {
-        throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + maxObjectSize + " are available.");
+      const realBuffer = buffer.slice(offset + 1, offset + 1 + length);
+      if (length === 4) {
+        return realBuffer.readFloatBE(0);
       }
+      if (length === 8) {
+        return realBuffer.readDoubleBE(0);
+      }
+      throw new Error("Invalid binary plist. Unsupported real length: " + length);
     }
 
     function parseDate(): Date {

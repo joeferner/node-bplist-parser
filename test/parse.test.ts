@@ -171,7 +171,40 @@ describe('bplist-parser', function () {
       bplist.parseBuffer(Buffer.from('bplist00'));
     }, /Invalid binary plist/);
   });
+
+  it('preserves negative zero reals', function () {
+    const payload = Buffer.alloc(8);
+    payload.writeDoubleBE(-0, 0);
+    const [parsed] = bplist.parseBuffer(makeSingleObjectPlist(Buffer.concat([Buffer.from([0x23]), payload])));
+    assert.ok(Object.is(parsed, -0));
+  });
+
+  it('rejects unsupported real widths', function () {
+    for (const info of [0, 1, 4, 5]) {
+      const object = Buffer.concat([Buffer.from([0x20 | info]), Buffer.alloc(2 ** info)]);
+      assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(object)), /Unsupported real length/);
+    }
+  });
 });
+
+function makeSingleObjectPlist(object: Buffer): Buffer {
+  const offsetTableOffset = 8 + object.length;
+  const offsetSize = byteWidth(offsetTableOffset);
+  const trailer = Buffer.concat([
+    Buffer.alloc(6),
+    Buffer.from([offsetSize, 1]),
+    writeUIntBE(1, 8),
+    writeUIntBE(0, 8),
+    writeUIntBE(offsetTableOffset, 8)
+  ]);
+
+  return Buffer.concat([
+    Buffer.from('bplist00'),
+    object,
+    writeUIntBE(8, offsetSize),
+    trailer
+  ]);
+}
 
 type IntegerCase = { value: bigint; bytes: number; expected: number | bigint };
 
