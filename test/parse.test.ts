@@ -171,7 +171,113 @@ describe('bplist-parser', function () {
       bplist.parseBuffer(Buffer.from('bplist00'));
     }, /Invalid binary plist/);
   });
+
+  it('rejects malformed trailer and offset table values', function () {
+    const base = makeIntegerArray([{ value: 1n, bytes: 1, expected: 1 }]);
+    const trailerOffset = base.length - 32;
+    const tableOffset = Number(readBigUInt(base.subarray(trailerOffset + 24, trailerOffset + 32)));
+
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { objectCount: 0n })), /Object count/);
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { topObject: 0xffffffffffffffffn })), /Top object/);
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { offsetSize: 0 })), /Offset size/);
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { offsetSize: 255 })), /Offset size/);
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { objectRefSize: 0 })), /Object reference size/);
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { objectRefSize: 9 })), /Object reference size/);
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { offsetTableOffset: BigInt(tableOffset + 1000) })), /Offset table/);
+    assert.throws(() => bplist.parseBuffer(replaceFirstObjectOffset(base, 0n)), /outside/);
+    assert.throws(() => bplist.parseBuffer(replaceFirstObjectOffset(base, BigInt(tableOffset))), /outside/);
+    assert.throws(() => bplist.parseBuffer(replaceFirstObjectOffset(base, BigInt(tableOffset + 1000))), /outside/);
+  });
+
+  it('rejects object references outside the object table', function () {
+    const root = Buffer.concat([Buffer.from([0xA1]), Buffer.from([1])]);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(root)), /Object reference/);
+  });
+
+  it('rejects payloads that extend outside the object data area', function () {
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.from([0x14, 1, 2]))), /integer extends outside/);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.concat([Buffer.from([0x23]), Buffer.alloc(7)]))), /real extends outside/);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.from([0x33, 1]))), /date extends outside/);
+  });
+
+  it('rejects unsupported integer, date, and extended length markers', function () {
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.concat([Buffer.from([0x15]), Buffer.alloc(32)]))), /Unsupported integer length/);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.concat([Buffer.from([0x34]), Buffer.alloc(8)]))), /Unsupported date length marker/);
+
+    for (const marker of [0x4F, 0x5F, 0x6F, 0xAF, 0xDF]) {
+      const object = Buffer.concat([Buffer.from([marker, 0x14]), Buffer.alloc(16)]);
+      assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(object)), /Unsupported \w+ length width/);
+    }
+
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.from([0x4F, 0x24]))), /Unexpected data length marker type/);
+  });
 });
+
+type TrailerOverrides = {
+  objectCount?: bigint;
+  topObject?: bigint;
+  offsetSize?: number;
+  objectRefSize?: number;
+  offsetTableOffset?: bigint;
+};
+
+function makeSingleObjectPlist(object: Buffer): Buffer {
+  const offsetTableOffset = 8 + object.length;
+  const offsetSize = byteWidth(offsetTableOffset);
+  const trailer = Buffer.concat([
+    Buffer.alloc(6),
+    Buffer.from([offsetSize, 1]),
+    writeUIntBE(1, 8),
+    writeUIntBE(0, 8),
+    writeUIntBE(offsetTableOffset, 8)
+  ]);
+
+  return Buffer.concat([
+    Buffer.from('bplist00'),
+    object,
+    writeUIntBE(8, offsetSize),
+    trailer
+  ]);
+}
+
+function replaceTrailer(input: Buffer, overrides: TrailerOverrides): Buffer {
+  const result = Buffer.from(input);
+  const trailerOffset = result.length - 32;
+
+  if (overrides.objectCount !== undefined) {
+    writeUIntBE(overrides.objectCount, 8).copy(result, trailerOffset + 8);
+  }
+  if (overrides.topObject !== undefined) {
+    writeUIntBE(overrides.topObject, 8).copy(result, trailerOffset + 16);
+  }
+  if (overrides.offsetSize !== undefined) {
+    result[trailerOffset + 6] = overrides.offsetSize;
+  }
+  if (overrides.objectRefSize !== undefined) {
+    result[trailerOffset + 7] = overrides.objectRefSize;
+  }
+  if (overrides.offsetTableOffset !== undefined) {
+    writeUIntBE(overrides.offsetTableOffset, 8).copy(result, trailerOffset + 24);
+  }
+  return result;
+}
+
+function replaceFirstObjectOffset(input: Buffer, value: bigint): Buffer {
+  const result = Buffer.from(input);
+  const trailerOffset = result.length - 32;
+  const offsetSize = result[trailerOffset + 6];
+  const tableOffset = Number(readBigUInt(result.subarray(trailerOffset + 24, trailerOffset + 32)));
+  writeUIntBE(value, offsetSize).copy(result, tableOffset);
+  return result;
+}
+
+function readBigUInt(buffer: Buffer): bigint {
+  let value = 0n;
+  for (const byte of buffer) {
+    value = (value << 8n) | BigInt(byte);
+  }
+  return value;
+}
 
 type IntegerCase = { value: bigint; bytes: number; expected: number | bigint };
 
