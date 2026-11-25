@@ -98,33 +98,56 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
   if (debug) {
     console.log("offsetSize: " + offsetSize);
   }
+  if (offsetSize < 1 || offsetSize > 8) {
+    throw new Error("Invalid binary plist. Offset size must be between 1 and 8.");
+  }
   const objectRefSize = trailer.readUInt8(7);
   if (debug) {
     console.log("objectRefSize: " + objectRefSize);
   }
-  const numObjects = readUInt64BE(trailer, 8);
-  if (debug) {
-    console.log("numObjects: " + numObjects);
+  if (objectRefSize < 1 || objectRefSize > 8) {
+    throw new Error("Invalid binary plist. Object reference size must be between 1 and 8.");
   }
-  const topObject = readUInt64BE(trailer, 16);
+  const numObjectsValue = readUInt64BE(trailer, 8);
   if (debug) {
-    console.log("topObject: " + topObject);
+    console.log("numObjects: " + numObjectsValue);
   }
-  const offsetTableOffset = readUInt64BE(trailer, 24);
-  if (debug) {
-    console.log("offsetTableOffset: " + offsetTableOffset);
+  if (numObjectsValue === 0n) {
+    throw new Error("Invalid binary plist. Object count must be at least 1.");
   }
-
-  if (numObjects > maxObjectCount) {
+  if (numObjectsValue > BigInt(maxObjectCount)) {
     throw new Error("maxObjectCount exceeded");
   }
+  const numObjects = Number(numObjectsValue);
+  const topObjectValue = readUInt64BE(trailer, 16);
+  if (debug) {
+    console.log("topObject: " + topObjectValue);
+  }
+  if (topObjectValue >= numObjectsValue) {
+    throw new Error("Invalid binary plist. Top object is outside the object table.");
+  }
+  const topObject = Number(topObjectValue);
+  const offsetTableOffsetValue = readUInt64BE(trailer, 24);
+  if (debug) {
+    console.log("offsetTableOffset: " + offsetTableOffsetValue);
+  }
+  const offsetTableSize = BigInt(numObjects * offsetSize);
+  const objectDataEndValue = BigInt(buffer.length - 32);
+  if (offsetTableOffsetValue < 8n || offsetTableOffsetValue + offsetTableSize > objectDataEndValue) {
+    throw new Error("Invalid binary plist. Offset table is outside the object data area.");
+  }
+  const offsetTableOffset = Number(offsetTableOffsetValue);
 
   // Handle offset table
   const offsetTable: number[] = [];
 
   for (let i = 0; i < numObjects; i++) {
     const offsetBytes = buffer.slice(offsetTableOffset + i * offsetSize, offsetTableOffset + (i + 1) * offsetSize);
-    offsetTable[i] = readUInt(offsetBytes, 0);
+    const objectOffsetValue = readBigUInt(offsetBytes);
+    if (objectOffsetValue < 8n || objectOffsetValue >= offsetTableOffsetValue) {
+      throw new Error("Invalid binary plist. Object #" + i + " has an offset outside the object data area.");
+    }
+    offsetTable[i] = Number(objectOffsetValue);
     if (debug) {
       console.log("Offset for Object #" + i + " is " + offsetTable[i] + " [" + offsetTable[i].toString(16) + "]");
     }
@@ -142,6 +165,9 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
   const objectsBeingParsed = new Set<number>();
 
   function parseObject(tableOffset: number): any {
+    if (!Number.isInteger(tableOffset) || tableOffset < 0 || tableOffset >= offsetTable.length) {
+      throw new Error("Invalid binary plist. Object reference is outside the object table.");
+    }
     if (++expandedObjectCount > maxExpandedObjectCount) {
       throw new Error("maxExpandedObjectCount exceeded");
     }
@@ -158,9 +184,20 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
 
   function parseObjectAt(tableOffset: number): any {
     const offset = offsetTable[tableOffset];
+    if (offset < 8 || offset >= offsetTableOffset || offset >= buffer.length) {
+      throw new Error("Invalid binary plist. Object offset is outside the object data area.");
+    }
     const type = buffer[offset];
     const objType = (type & 0xF0) >> 4; //First  4 bits
     const objInfo = (type & 0x0F);      //Second 4 bits
+
+    function readObjectBytes(start: number, length: number, name: string): Buffer {
+      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(length) || start < 8 || length < 0 || start + length > offsetTableOffset) {
+        throw new Error("Invalid binary plist. " + name + " extends outside the object data area.");
+      }
+      return buffer.subarray(start, start + length);
+    }
+
     switch (objType) {
     case 0x0:
       return parseSimple();
@@ -204,12 +241,10 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
 
     function parseInteger(): number | bigint {
       const length = Math.pow(2, objInfo);
-      if (length < maxObjectSize) {
-        const data = buffer.slice(offset + 1, offset + 1 + length);
-        return readInteger(data);
+      if (length > 16) {
+        throw new Error("Invalid binary plist. Unsupported integer length: " + length);
       }
-        throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + maxObjectSize + " are available.");
-
+      return readInteger(readObjectBytes(offset + 1, length, "integer"));
     }
 
     function parseUID(): UID {
@@ -217,130 +252,143 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
       if (length > 8) {
         throw new Error("Invalid binary plist. UID length must be between 1 and 8 bytes.");
       }
-      return new UID(simplifyInteger(readBigUInt(buffer.slice(offset + 1, offset + 1 + length))));
+      return new UID(simplifyInteger(readBigUInt(readObjectBytes(offset + 1, length, "UID"))));
     }
 
     function parseReal(): number | undefined {
       const length = Math.pow(2, objInfo);
-      if (length < maxObjectSize) {
-        const realBuffer = buffer.slice(offset + 1, offset + 1 + length);
-        if (length === 4) {
-          return realBuffer.readFloatBE(0);
-        }
-        if (length === 8) {
-          return realBuffer.readDoubleBE(0);
-        }
-      } else {
-        throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + maxObjectSize + " are available.");
+      const realBuffer = readObjectBytes(offset + 1, length, "real");
+      if (length === 4) {
+        return realBuffer.readFloatBE(0);
+      }
+      if (length === 8) {
+        return realBuffer.readDoubleBE(0);
       }
     }
 
     function parseDate(): Date {
       if (objInfo !== 0x3) {
-        console.error("Unknown date type :" + objInfo + ". Parsing anyway...");
+        throw new Error("Invalid binary plist. Unsupported date length marker: " + objInfo);
       }
-      const dateBuffer = buffer.slice(offset + 1, offset + 9);
+      const dateBuffer = readObjectBytes(offset + 1, 8, "date");
       return new Date(EPOCH + (1000 * dateBuffer.readDoubleBE(0)));
     }
 
     function parseData(): Buffer {
-      let dataoffset = 1;
-      let length = objInfo;
+      let dataOffset = 1;
+      let lengthValue = BigInt(objInfo);
       if (objInfo === 0xF) {
-        const int_type = buffer[offset + 1];
-        const intType = (int_type & 0xF0) / 0x10;
+        const intTypeByte = readObjectBytes(offset + 1, 1, "data length marker")[0];
+        const intType = (intTypeByte & 0xF0) >> 4;
         if (intType !== 0x1) {
-          console.error("0x4: UNEXPECTED LENGTH-INT TYPE! " + intType);
+          throw new Error("Invalid binary plist. Unexpected data length marker type: " + intType);
         }
-        const intInfo = int_type & 0x0F;
+        const intInfo = intTypeByte & 0x0F;
         const intLength = Math.pow(2, intInfo);
-        dataoffset = 2 + intLength;
-        length = readUInt(buffer.slice(offset + 2, offset + 2 + intLength));
+        if (intLength > 8) {
+          throw new Error("Invalid binary plist. Unsupported data length width: " + intLength);
+        }
+        dataOffset = 2 + intLength;
+        lengthValue = readBigUInt(readObjectBytes(offset + 2, intLength, "data length"));
       }
-      if (length < maxObjectSize) {
-        return buffer.slice(offset + dataoffset, offset + dataoffset + length);
+      if (lengthValue > BigInt(maxObjectSize)) {
+        throw new Error("Too little heap space available! Wanted to read " + lengthValue + " bytes, but only " + maxObjectSize + " are available.");
       }
-      throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + maxObjectSize + " are available.");
+      return readObjectBytes(offset + dataOffset, Number(lengthValue), "data");
     }
 
     function parsePlistString(isUtf16?: boolean): string {
       const utf16Flag = isUtf16 || false;
       let enc: BufferEncoding = "utf8";
-      let length = objInfo;
-      let stroffset = 1;
+      let lengthValue = BigInt(objInfo);
+      let stringOffset = 1;
       if (objInfo === 0xF) {
-        const int_type = buffer[offset + 1];
-        const intType = (int_type & 0xF0) / 0x10;
+        const intTypeByte = readObjectBytes(offset + 1, 1, "string length marker")[0];
+        const intType = (intTypeByte & 0xF0) >> 4;
         if (intType !== 0x1) {
-          console.error("UNEXPECTED LENGTH-INT TYPE! " + intType);
+          throw new Error("Invalid binary plist. Unexpected string length marker type: " + intType);
         }
-        const intInfo = int_type & 0x0F;
+        const intInfo = intTypeByte & 0x0F;
         const intLength = Math.pow(2, intInfo);
-        stroffset = 2 + intLength;
-        length = readUInt(buffer.slice(offset + 2, offset + 2 + intLength));
-      }
-      // length is String length -> to get byte length multiply by 2, as 1 character takes 2 bytes in UTF-16
-      length *= (utf16Flag ? 2 : 1);
-      if (length < maxObjectSize) {
-        let plistString = Buffer.from(buffer.slice(offset + stroffset, offset + stroffset + length));
-        if (utf16Flag) {
-          plistString = swapBytes(plistString);
-          enc = "ucs2";
+        if (intLength > 8) {
+          throw new Error("Invalid binary plist. Unsupported string length width: " + intLength);
         }
-        return plistString.toString(enc);
+        stringOffset = 2 + intLength;
+        lengthValue = readBigUInt(readObjectBytes(offset + 2, intLength, "string length"));
       }
-      throw new Error("Too little heap space available! Wanted to read " + length + " bytes, but only " + maxObjectSize + " are available.");
+      lengthValue *= utf16Flag ? 2n : 1n;
+      if (lengthValue > BigInt(maxObjectSize)) {
+        throw new Error("Too little heap space available! Wanted to read " + lengthValue + " bytes, but only " + maxObjectSize + " are available.");
+      }
+      let plistString = Buffer.from(readObjectBytes(offset + stringOffset, Number(lengthValue), "string"));
+      if (utf16Flag) {
+        plistString = swapBytes(plistString);
+        enc = "ucs2";
+      }
+      return plistString.toString(enc);
     }
 
     function parseArray(): any[] {
-      let length = objInfo;
-      let arrayoffset = 1;
+      let lengthValue = BigInt(objInfo);
+      let arrayOffset = 1;
       if (objInfo === 0xF) {
-        const int_type = buffer[offset + 1];
-        const intType = (int_type & 0xF0) / 0x10;
+        const intTypeByte = readObjectBytes(offset + 1, 1, "array length marker")[0];
+        const intType = (intTypeByte & 0xF0) >> 4;
         if (intType !== 0x1) {
-          console.error("0xa: UNEXPECTED LENGTH-INT TYPE! " + intType);
+          throw new Error("Invalid binary plist. Unexpected array length marker type: " + intType);
         }
-        const intInfo = int_type & 0x0F;
+        const intInfo = intTypeByte & 0x0F;
         const intLength = Math.pow(2, intInfo);
-        arrayoffset = 2 + intLength;
-        length = readUInt(buffer.slice(offset + 2, offset + 2 + intLength));
+        if (intLength > 8) {
+          throw new Error("Invalid binary plist. Unsupported array length width: " + intLength);
+        }
+        arrayOffset = 2 + intLength;
+        lengthValue = readBigUInt(readObjectBytes(offset + 2, intLength, "array length"));
       }
-      if (length * objectRefSize > maxObjectSize) {
+      const refsSize = lengthValue * BigInt(objectRefSize);
+      if (refsSize > BigInt(maxObjectSize)) {
         throw new Error("Too little heap space available!");
       }
+      const length = Number(lengthValue);
+      const refs = readObjectBytes(offset + arrayOffset, Number(refsSize), "array references");
       const array: any[] = [];
       for (let i = 0; i < length; i++) {
-        const objRef = readUInt(buffer.slice(offset + arrayoffset + i * objectRefSize, offset + arrayoffset + (i + 1) * objectRefSize));
+        const objRef = readUInt(refs.subarray(i * objectRefSize, (i + 1) * objectRefSize));
         array[i] = parseObject(objRef);
       }
       return array;
     }
 
     function parseDictionary(): Record<string, any> {
-      let length = objInfo;
-      let dictoffset = 1;
+      let lengthValue = BigInt(objInfo);
+      let dictOffset = 1;
       if (objInfo === 0xF) {
-        const int_type = buffer[offset + 1];
-        const intType = (int_type & 0xF0) / 0x10;
+        const intTypeByte = readObjectBytes(offset + 1, 1, "dictionary length marker")[0];
+        const intType = (intTypeByte & 0xF0) >> 4;
         if (intType !== 0x1) {
-          console.error("0xD: UNEXPECTED LENGTH-INT TYPE! " + intType);
+          throw new Error("Invalid binary plist. Unexpected dictionary length marker type: " + intType);
         }
-        const intInfo = int_type & 0x0F;
+        const intInfo = intTypeByte & 0x0F;
         const intLength = Math.pow(2, intInfo);
-        dictoffset = 2 + intLength;
-        length = readUInt(buffer.slice(offset + 2, offset + 2 + intLength));
+        if (intLength > 8) {
+          throw new Error("Invalid binary plist. Unsupported dictionary length width: " + intLength);
+        }
+        dictOffset = 2 + intLength;
+        lengthValue = readBigUInt(readObjectBytes(offset + 2, intLength, "dictionary length"));
       }
-      if (length * 2 * objectRefSize > maxObjectSize) {
+      const refsSize = lengthValue * 2n * BigInt(objectRefSize);
+      if (refsSize > BigInt(maxObjectSize)) {
         throw new Error("Too little heap space available!");
       }
+      const length = Number(lengthValue);
+      const refs = readObjectBytes(offset + dictOffset, Number(refsSize), "dictionary references");
       if (debug) {
         console.log("Parsing dictionary #" + tableOffset);
       }
       const dict: Record<string, any> = {};
       for (let i = 0; i < length; i++) {
-        const keyRef = readUInt(buffer.slice(offset + dictoffset + i * objectRefSize, offset + dictoffset + (i + 1) * objectRefSize));
-        const valRef = readUInt(buffer.slice(offset + dictoffset + (length * objectRefSize) + i * objectRefSize, offset + dictoffset + (length * objectRefSize) + (i + 1) * objectRefSize));
+        const keyRef = readUInt(refs.subarray(i * objectRefSize, (i + 1) * objectRefSize));
+        const valRef = readUInt(refs.subarray((length + i) * objectRefSize, (length + i + 1) * objectRefSize));
         const key = parseObject(keyRef);
         const val = parseObject(valRef);
         if (debug) {
@@ -392,10 +440,8 @@ function readInteger(buffer: Buffer): number | bigint {
   return simplifyInteger(value);
 }
 
-// we're just going to toss the high order bits because javascript doesn't have 64-bit ints
-function readUInt64BE(buffer: Buffer, start: number): number {
-  const data = buffer.slice(start, start + 8);
-  return readUInt(data, 0);
+function readUInt64BE(buffer: Buffer, start: number): bigint {
+  return readBigUInt(buffer.subarray(start, start + 8));
 }
 
 function swapBytes<T extends Buffer>(buffer: T): T {
