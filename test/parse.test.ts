@@ -211,6 +211,28 @@ describe('bplist-parser', function () {
 
     assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.from([0x4F, 0x24]))), /Unexpected data length marker type/);
   });
+
+  it('parses UIDs larger than 2^53 without losing precision', function () {
+    const cases = [
+      { value: 0n, bytes: 1 },
+      { value: 255n, bytes: 1 },
+      { value: 256n, bytes: 2 },
+      { value: 4294967296n, bytes: 8 },
+      { value: 2n ** 63n, bytes: 8 }
+    ];
+
+    for (const {value, bytes} of cases) {
+      const object = Buffer.concat([Buffer.from([0x80 | (bytes - 1)]), writeUIntBE(value, bytes)]);
+      const [parsed] = bplist.parseBuffer(makeSingleObjectPlist(object));
+      const expected = value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value;
+      assert.strictEqual(parsed.UID, expected);
+    }
+  });
+
+  it('rejects UIDs wider than 8 bytes', function () {
+    const object = Buffer.concat([Buffer.from([0x88]), writeUIntBE(1n, 9)]);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(object)), /UID length/);
+  });
 });
 
 type TrailerOverrides = {
