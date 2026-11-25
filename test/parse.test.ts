@@ -172,6 +172,69 @@ describe('bplist-parser', function () {
     }, /Invalid binary plist/);
   });
 
+  it('rejects malformed trailer and offset table values', function () {
+    const base = makeIntegerArray([{ value: 1n, bytes: 1, expected: 1 }]);
+    const trailerOffset = base.length - 32;
+    const tableOffset = Number(base.readBigUInt64BE(trailerOffset + 24));
+
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { objectCount: 0n })), /Object count/);
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { topObject: 0xffffffffffffffffn })), /Top object/);
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { offsetSize: 0 })), /Offset size/);
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { offsetSize: 255 })), /Offset size/);
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { objectRefSize: 0 })), /Object reference size/);
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { objectRefSize: 9 })), /Object reference size/);
+    assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { offsetTableOffset: BigInt(tableOffset + 1000) })), /Offset table/);
+    assert.throws(() => bplist.parseBuffer(replaceFirstObjectOffset(base, 0n)), /outside/);
+    assert.throws(() => bplist.parseBuffer(replaceFirstObjectOffset(base, BigInt(tableOffset))), /outside/);
+    assert.throws(() => bplist.parseBuffer(replaceFirstObjectOffset(base, BigInt(tableOffset + 1000))), /outside/);
+  });
+
+  it('rejects object references outside the object table', function () {
+    const root = Buffer.concat([Buffer.from([0xA1]), Buffer.from([1])]);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(root)), /Object reference/);
+  });
+
+  it('rejects payloads that extend outside the object data area', function () {
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.from([0x14, 1, 2]))), /integer extends outside/);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.concat([Buffer.from([0x23]), Buffer.alloc(7)]))), /real extends outside/);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.from([0x33, 1]))), /date extends outside/);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.from([0x83, 1, 2]))), /UID extends outside/);
+  });
+
+  it('rejects unsupported integer, date, and extended length markers', function () {
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.concat([Buffer.from([0x15]), Buffer.alloc(32)]))), /Unsupported integer length/);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.concat([Buffer.from([0x34]), Buffer.alloc(8)]))), /Unsupported date length marker/);
+
+    for (const marker of [0x4F, 0x5F, 0x6F, 0xAF, 0xDF]) {
+      const object = Buffer.concat([Buffer.from([marker, 0x14]), Buffer.alloc(16)]);
+      assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(object)), /Unsupported \w+ length width/);
+    }
+
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.from([0x4F, 0x24]))), /Unexpected data length marker type/);
+  });
+
+  it('parses UIDs larger than 2^53 without losing precision', function () {
+    const cases = [
+      { value: 0n, bytes: 1 },
+      { value: 255n, bytes: 1 },
+      { value: 256n, bytes: 2 },
+      { value: 4294967296n, bytes: 8 },
+      { value: 2n ** 63n, bytes: 8 }
+    ];
+
+    for (const {value, bytes} of cases) {
+      const object = Buffer.concat([Buffer.from([0x80 | (bytes - 1)]), writeUIntBE(value, bytes)]);
+      const [parsed] = bplist.parseBuffer(makeSingleObjectPlist(object));
+      const expected = value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value;
+      assert.strictEqual(parsed.UID, expected);
+    }
+  });
+
+  it('rejects UIDs wider than 8 bytes', function () {
+    const object = Buffer.concat([Buffer.from([0x88]), writeUIntBE(1n, 9)]);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(object)), /UID length/);
+  });
+
   it('preserves negative zero reals', function () {
     const payload = Buffer.alloc(8);
     payload.writeDoubleBE(-0, 0);
@@ -186,6 +249,14 @@ describe('bplist-parser', function () {
     }
   });
 });
+
+type TrailerOverrides = {
+  objectCount?: bigint;
+  topObject?: bigint;
+  offsetSize?: number;
+  objectRefSize?: number;
+  offsetTableOffset?: bigint;
+};
 
 function makeSingleObjectPlist(object: Buffer): Buffer {
   const offsetTableOffset = 8 + object.length;
@@ -204,6 +275,37 @@ function makeSingleObjectPlist(object: Buffer): Buffer {
     writeUIntBE(8, offsetSize),
     trailer
   ]);
+}
+
+function replaceTrailer(input: Buffer, overrides: TrailerOverrides): Buffer {
+  const result = Buffer.from(input);
+  const trailerOffset = result.length - 32;
+
+  if (overrides.objectCount !== undefined) {
+    writeUIntBE(overrides.objectCount, 8).copy(result, trailerOffset + 8);
+  }
+  if (overrides.topObject !== undefined) {
+    writeUIntBE(overrides.topObject, 8).copy(result, trailerOffset + 16);
+  }
+  if (overrides.offsetSize !== undefined) {
+    result[trailerOffset + 6] = overrides.offsetSize;
+  }
+  if (overrides.objectRefSize !== undefined) {
+    result[trailerOffset + 7] = overrides.objectRefSize;
+  }
+  if (overrides.offsetTableOffset !== undefined) {
+    writeUIntBE(overrides.offsetTableOffset, 8).copy(result, trailerOffset + 24);
+  }
+  return result;
+}
+
+function replaceFirstObjectOffset(input: Buffer, value: bigint): Buffer {
+  const result = Buffer.from(input);
+  const trailerOffset = result.length - 32;
+  const offsetSize = result[trailerOffset + 6];
+  const tableOffset = Number(result.readBigUInt64BE(trailerOffset + 24));
+  writeUIntBE(value, offsetSize).copy(result, tableOffset);
+  return result;
 }
 
 type IntegerCase = { value: bigint; bytes: number; expected: number | bigint };
