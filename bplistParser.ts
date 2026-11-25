@@ -255,7 +255,7 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
       return new UID(simplifyInteger(readBigUInt(readObjectBytes(offset + 1, length, "UID"))));
     }
 
-    function parseReal(): number | undefined {
+    function parseReal(): number {
       const length = Math.pow(2, objInfo);
       const realBuffer = readObjectBytes(offset + 1, length, "real");
       if (length === 4) {
@@ -264,6 +264,7 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
       if (length === 8) {
         return realBuffer.readDoubleBE(0);
       }
+      throw new Error("Invalid binary plist. Unsupported real length: " + length);
     }
 
     function parseDate(): Date {

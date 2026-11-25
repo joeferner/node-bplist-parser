@@ -234,6 +234,20 @@ describe('bplist-parser', function () {
     const object = Buffer.concat([Buffer.from([0x88]), writeUIntBE(1n, 9)]);
     assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(object)), /UID length/);
   });
+
+  it('preserves negative zero reals', function () {
+    const payload = Buffer.alloc(8);
+    payload.writeDoubleBE(-0, 0);
+    const [parsed] = bplist.parseBuffer(makeSingleObjectPlist(Buffer.concat([Buffer.from([0x23]), payload])));
+    assert.ok(Object.is(parsed, -0));
+  });
+
+  it('rejects unsupported real widths', function () {
+    for (const info of [0, 1, 4, 5]) {
+      const object = Buffer.concat([Buffer.from([0x20 | info]), Buffer.alloc(2 ** info)]);
+      assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(object)), /Unsupported real length/);
+    }
+  });
 });
 
 type TrailerOverrides = {
