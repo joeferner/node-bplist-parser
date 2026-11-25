@@ -252,7 +252,7 @@ export function parseBuffer<T = any>(buffer: Buffer): [T] {
       if (length > 8) {
         throw new Error("Invalid binary plist. UID length must be between 1 and 8 bytes.");
       }
-      return new UID(simplifyInteger(readBigUInt(buffer.slice(offset + 1, offset + 1 + length))));
+      return new UID(simplifyInteger(readBigUInt(readObjectBytes(offset + 1, length, "UID"))));
     }
 
     function parseReal(): number | undefined {

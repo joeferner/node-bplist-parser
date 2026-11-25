@@ -175,7 +175,7 @@ describe('bplist-parser', function () {
   it('rejects malformed trailer and offset table values', function () {
     const base = makeIntegerArray([{ value: 1n, bytes: 1, expected: 1 }]);
     const trailerOffset = base.length - 32;
-    const tableOffset = Number(readBigUInt(base.subarray(trailerOffset + 24, trailerOffset + 32)));
+    const tableOffset = Number(base.readBigUInt64BE(trailerOffset + 24));
 
     assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { objectCount: 0n })), /Object count/);
     assert.throws(() => bplist.parseBuffer(replaceTrailer(base, { topObject: 0xffffffffffffffffn })), /Top object/);
@@ -198,6 +198,7 @@ describe('bplist-parser', function () {
     assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.from([0x14, 1, 2]))), /integer extends outside/);
     assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.concat([Buffer.from([0x23]), Buffer.alloc(7)]))), /real extends outside/);
     assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.from([0x33, 1]))), /date extends outside/);
+    assert.throws(() => bplist.parseBuffer(makeSingleObjectPlist(Buffer.from([0x83, 1, 2]))), /UID extends outside/);
   });
 
   it('rejects unsupported integer, date, and extended length markers', function () {
@@ -288,17 +289,9 @@ function replaceFirstObjectOffset(input: Buffer, value: bigint): Buffer {
   const result = Buffer.from(input);
   const trailerOffset = result.length - 32;
   const offsetSize = result[trailerOffset + 6];
-  const tableOffset = Number(readBigUInt(result.subarray(trailerOffset + 24, trailerOffset + 32)));
+  const tableOffset = Number(result.readBigUInt64BE(trailerOffset + 24));
   writeUIntBE(value, offsetSize).copy(result, tableOffset);
   return result;
-}
-
-function readBigUInt(buffer: Buffer): bigint {
-  let value = 0n;
-  for (const byte of buffer) {
-    value = (value << 8n) | BigInt(byte);
-  }
-  return value;
 }
 
 type IntegerCase = { value: bigint; bytes: number; expected: number | bigint };
