@@ -147,6 +147,20 @@ describe('bplist-parser', function () {
     assert.deepStrictEqual(values, cases.map(({expected}) => expected));
   });
 
+  it('signed 128-bit integers', function () {
+    // CoreFoundation and Python's plistlib read 16-byte integers as signed
+    const cases = [
+      { value: -1n, bytes: 16, expected: -1 },
+      { value: -5n, bytes: 16, expected: -5 },
+      { value: -9223372036854775809n, bytes: 16, expected: -9223372036854775809n },
+      { value: -(1n << 127n), bytes: 16, expected: -(1n << 127n) },
+      { value: (1n << 127n) - 1n, bytes: 16, expected: (1n << 127n) - 1n }
+    ];
+
+    const [values] = bplist.parseBuffer(makeIntegerArray(cases));
+    assert.deepStrictEqual(values, cases.map(({expected}) => expected));
+  });
+
   it('keeps a "__proto__" dictionary key as an own property', function () {
     // plistlib.dumps({"__proto__": {"isAdmin": True}, "name": "x"}, fmt=plistlib.FMT_BINARY)
     const buf = Buffer.from(

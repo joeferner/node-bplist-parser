@@ -434,8 +434,9 @@ function simplifyInteger(value: bigint): number | bigint {
 function readInteger(buffer: Buffer): number | bigint {
   let value = readBigUInt(buffer);
 
-  if (buffer.length === 8 && (buffer[0] & 0x80)) {
-    value -= 1n << 64n;
+  // 1, 2 and 4-byte integers are unsigned; 8 and 16-byte integers are signed
+  if (buffer.length >= 8 && (buffer[0] & 0x80)) {
+    value -= 1n << BigInt(buffer.length * 8);
   }
 
   return simplifyInteger(value);
